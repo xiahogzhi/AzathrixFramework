@@ -1,7 +1,21 @@
 {
   "dependencies": {
-    "com.para-cross-games.upm-editor": {
-      "version": "1.0.3",
+    "com.azathrix.framework": {
+      "version": "file:com.azathrix.framework",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.azathrix.unitask": "2.5.10"
+      }
+    },
+    "com.azathrix.unitask": {
+      "version": "file:com.azathrix.unitask",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.azathrix.upm-editor": {
+      "version": "1.0.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
@@ -26,7 +40,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.burst": {
-      "version": "1.8.25",
+      "version": "1.8.26",
       "depth": 2,
       "source": "registry",
       "dependencies": {
@@ -64,7 +78,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.inputsystem": {
-      "version": "1.16.0",
+      "version": "1.17.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -134,10 +148,13 @@
       }
     },
     "com.unity.scriptablebuildpipeline": {
-      "version": "1.21.0",
+      "version": "2.4.3",
       "depth": 0,
       "source": "registry",
-      "dependencies": {},
+      "dependencies": {
+        "com.unity.test-framework": "1.4.5",
+        "com.unity.modules.assetbundle": "1.0.0"
+      },
       "url": "https://packages.unity.com"
     },
     "com.unity.searcher": {

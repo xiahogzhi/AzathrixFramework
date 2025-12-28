@@ -1,12 +1,12 @@
 {
   "dependencies": {
-    "com.para-cross-games.upm-editor": "1.0.3",
+    "com.azathrix.upm-editor": "1.0.0",
     "com.unity.ide.rider": "3.0.38",
-    "com.unity.inputsystem": "1.16.0",
+    "com.unity.inputsystem": "1.17.0",
     "com.unity.multiplayer.center": "1.0.1",
     "com.unity.nuget.newtonsoft-json": "3.2.2",
     "com.unity.render-pipelines.universal": "17.3.0",
-    "com.unity.scriptablebuildpipeline": "1.21.0",
+    "com.unity.scriptablebuildpipeline": "2.4.3",
     "com.unity.ugui": "2.0.0",
     "com.unity.upm.develop": "0.5.1",
     "com.unity.modules.accessibility": "1.0.0",
@@ -46,10 +46,10 @@
   },
   "scopedRegistries": [
     {
-      "name": "ParaCross Games",
+      "name": "Azathrix",
       "url": "http://www.inputname.com:4873",
       "scopes": [
-        "com.para-cross-games"
+        "com.azathrix"
       ]
     }
   ]

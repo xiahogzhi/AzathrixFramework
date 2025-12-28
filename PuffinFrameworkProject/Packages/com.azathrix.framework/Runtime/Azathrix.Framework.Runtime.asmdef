@@ -1,0 +1,17 @@
+﻿{
+    "name": "Azathrix.Framework.Runtime",
+    "rootNamespace": "Azathrix.Framework",
+    "references": [
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:4b9323466a12a244b94a9635d32050aa"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
