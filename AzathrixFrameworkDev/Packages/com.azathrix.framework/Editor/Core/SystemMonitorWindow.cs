@@ -1,11 +1,11 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Linq;
-using ParaCrossGames.Framework.Core;
+using Azathrix.Framework.Core;
 using UnityEditor;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Editor.Core
+namespace Azathrix.Framework.Editor.Core
 {
     /// <summary>
     /// 系统监控窗口，实时显示所有游戏系统的运行状态和性能数据
@@ -41,7 +41,7 @@ namespace ParaCrossGames.Framework.Editor.Core
 
         private enum SortMode { Priority, Name, UpdateTime }
 
-        [MenuItem("Puffin Games/调试分析/系统监视器")]
+        [MenuItem("Azathrix/调试分析/系统监视器")]
         public static void ShowWindow()
         {
             GetWindow<SystemMonitorWindow>("系统监视");
@@ -70,9 +70,9 @@ namespace ParaCrossGames.Framework.Editor.Core
 
         private void OnGUI()
         {
-            if (PuffinFramework.EffectiveRuntime == null)
+            if (AzathrixFramework.EffectiveRuntimeManager == null)
             {
-                EditorGUILayout.HelpBox("Puffin Framework 未初始化", MessageType.Info);
+                EditorGUILayout.HelpBox("Azathrix Framework 未初始化", MessageType.Info);
                 return;
             }
 
@@ -104,18 +104,18 @@ namespace ParaCrossGames.Framework.Editor.Core
 
             GUILayout.FlexibleSpace();
 
-            var profiling = PuffinFramework.EffectiveRuntime.EnableProfiling;
+            var profiling = AzathrixFramework.EffectiveRuntimeManager.EnableProfiling;
             var newProfiling = GUILayout.Toggle(profiling, "性能统计", EditorStyles.toolbarButton, GUILayout.Width(70));
             if (newProfiling != profiling)
-                PuffinFramework.EffectiveRuntime.EnableProfiling = newProfiling;
+                AzathrixFramework.EffectiveRuntimeManager.EnableProfiling = newProfiling;
 
-            var pauseText = PuffinFramework.EffectiveRuntime.IsPaused ? "▶ 恢复" : "⏸ 暂停";
+            var pauseText = AzathrixFramework.EffectiveRuntimeManager.IsPaused ? "▶ 恢复" : "⏸ 暂停";
             if (GUILayout.Button(pauseText, EditorStyles.toolbarButton, GUILayout.Width(60)))
             {
-                if (PuffinFramework.EffectiveRuntime.IsPaused)
-                    PuffinFramework.Resume();
+                if (AzathrixFramework.EffectiveRuntimeManager.IsPaused)
+                    AzathrixFramework.Resume();
                 else
-                    PuffinFramework.Pause();
+                    AzathrixFramework.Pause();
             }
 
             EditorGUILayout.EndHorizontal();
@@ -126,7 +126,7 @@ namespace ParaCrossGames.Framework.Editor.Core
         {
             if (EditorApplication.timeSinceStartup - _lastRefreshTime > RefreshInterval)
             {
-                _cachedStatus = PuffinFramework.EffectiveRuntime.GetAllSystemStatus();
+                _cachedStatus = AzathrixFramework.EffectiveRuntimeManager.GetAllSystemStatus();
                 _lastRefreshTime = EditorApplication.timeSinceStartup;
             }
 
@@ -311,7 +311,7 @@ namespace ParaCrossGames.Framework.Editor.Core
                 var btnText = status.IsEnabled ? "禁用" : "启用";
                 if (GUILayout.Button(btnText, GUILayout.Width(_colAction)))
                 {
-                    PuffinFramework.EffectiveRuntime.SetSystemEnabled(status.Type, !status.IsEnabled);
+                    AzathrixFramework.EffectiveRuntimeManager.SetSystemEnabled(status.Type, !status.IsEnabled);
                 }
             }
             else

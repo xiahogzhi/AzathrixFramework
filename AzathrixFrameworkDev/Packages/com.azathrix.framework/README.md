@@ -1,229 +1,215 @@
-# Package Starter Kit
+# Azathrix Framework
 
-The purpose of this starter kit is to provide the data structure and development guidelines for new packages meant for the **Unity Package Manager (UPM)**.
+Unity 模块化游戏框架，提供系统管理、依赖注入、事件分发、启动管线等核心功能。
 
-## Are you ready to become a package?
-The Package Manager is a work in progress for Unity. Because of that, your package needs to meet these criteria to become an official Unity package:
-- **Your code accesses public Unity C# APIs only.**
-- **Your code doesn't require security, obfuscation, or conditional access control.**
+## 特性
 
+- 基于接口的系统架构，支持自动扫描和注册
+- 灵活的依赖注入，支持强依赖和弱依赖
+- 类型安全的事件系统，支持优先级和一次性事件
+- 可扩展的启动管线，支持自定义阶段和钩子
+- 完整的编辑器支持，系统在编辑器模式下也能运行
 
-## Package structure
+## 安装
 
-```none
-<root>
-  ├── package.json
-  ├── README.md
-  ├── CHANGELOG.md
-  ├── Third Party Notices.md
-  ├── Editor
-  │   ├── Xiahogzhi.PuffinGameFramework.Editor.asmdef
-  │   └── EditorExample.cs
-  ├── Runtime
-  │   ├── Xiahogzhi.PuffinGameFramework.asmdef
-  │   └── RuntimeExample.cs
-  ├── Tests
-  │   ├── .tests.json
-  │   ├── Editor
-  │   │   ├── Xiahogzhi.PuffinGameFramework.Editor.Tests.asmdef
-  │   │   └── EditorExampleTest.cs
-  │   └── Runtime
-  │        ├── Xiahogzhi.PuffinGameFramework.Tests.asmdef
-  │        └── RuntimeExampleTest.cs
-  ├── Samples
-  │   └── Example
-  │       ├── .sample.json
-  │       └── SampleExample.cs
-  └── Documentation
-       ├── Puffin Game Framework.md
-       └── Images
+通过 UPM 添加：
+```json
+{
+  "dependencies": {
+    "com.azathrix.framework": "0.0.2"
+  }
+}
 ```
 
-## Develop your package
-Package development works best within the Unity Editor.  Here's how to get started:
-
-1. Enter your package name. The name you choose should contain your default organization followed by the name you typed. For example: `Xiahogzhi.PuffinGameFramework`.
-
-2. [Enter the information](#FillOutFields) for your package in the `package.json` file.
-
-3. [Rename and update](#Asmdef) assembly definition files.
-
-4. [Document](#Doc) your package.
-
-5. [Add samples](#Populate) to your package (code & assets).
-
-6. [Validate](#Valid) your package.
-
-7. [Add tests](#Tests) to your package.
-
-8. Update the `CHANGELOG.md` file. 
-
-    Every new feature or bug fix should have a trace in this file. For more details on the chosen changelog format, see [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
-
-9. Make sure your package [meets all legal requirements](#Legal).
-
-10. Publish your package.
-
-
-
-<a name="FillOutFields"></a>
-### Completing the package manifest
-
-You can either modify the package manifest (`package.json`) file directly in the Inspector or by using an external editor. 
-
-To use the Inspector, select the `package.json` file in the Project browser. The **Package Puffin Game Framework Manifest** page opens for editing.
-
-Update these required attributes in the `package.json` file: 
-
-| **Attribute name:** | **Description:**                                             |
-| ------------------- | ------------------------------------------------------------ |
-| **name**            | The officially registered package name. This name must conform to the [Unity Package Manager naming convention](https://docs.unity3d.com/Manual/upm-manifestPkg.html#name), which uses reverse domain name notation. For example: <br />`"com.[YourCompanyName].[your-package-name]"` |
-| **displayName**     | A user-friendly name to appear in the Unity Editor (for example, in the Project Browser, the Package Manager window, etc.). For example: <br />`"Terrain Builder SDK"` <br/>__NOTE:__ Use a display name that will help users understand what your package is intended for. |
-| **version**         | The package version number (**'MAJOR.MINOR.PATCH"**). This value must respect [semantic versioning](http://semver.org/). For more information, see [Package version](https://docs.unity3d.com/Manual/upm-manifestPkg.html#pkg-ver) in the Unity User Manual. |
-| **unity**           | The lowest Unity version the package is compatible with. If omitted, the package is considered compatible with all Unity versions. <br /><br />The expected format is "**&lt;MAJOR&gt;.&lt;MINOR&gt;**" (for example, **2018.3**). |
-| **description**     | A brief description of the package. This is the text that appears in the [details view](upm-ui-details) of the Packages window. Any [UTF-8](https://en.wikipedia.org/wiki/UTF-8) character code is supported. This means that you can use special formatting character codes, such as line breaks (**\n**) and bullets (**\u25AA**). |
-
-Update the following recommended fields in file **package.json**:
-
-| **Attribute name:** | **Description:**                                             |
-| ------------------- | ------------------------------------------------------------ |
-| **dependencies**    | A map of package dependencies. Keys are package names, and values are specific versions. They indicate other packages that this package depends on. For more information, see [Dependencies](https://docs.unity3d.com/Manual/upm-dependencies.html) in the Unity User Manual.<br /><br />**NOTE**: The Package Manager does not support range syntax, only **SemVer** versions. |
-| **keywords**        | An array of keywords used by the Package Manager search APIs. This helps users find relevant packages. |
-
-
-
-<a name="Asmdef"></a>
-### Updating the Assembly Definition files
-
-You must associate scripts inside a package to an assembly definition file (.asmdef). Assembly definition files are the Unity equivalent to a C# project in the .NET ecosystem. You must set explicit references in the assembly definition file to other assemblies (whether in the same package or in external packages). See [Assembly Definitions](https://docs.unity3d.com/Manual/ScriptCompilationAssemblyDefinitionFiles.html) for more details.
-
-Use these conventions for naming and storing your assembly definition files to ensure that the compiled assembly filenames follow the [.NET Framework Design Guidelines](https://docs.microsoft.com/en-us/dotnet/standard/design-guidelines/):
-
-* Store Editor-specific code under a root editor assembly definition file:
-
-  `Editor/Xiahogzhi.PuffinGameFramework.Editor.asmdef`
-
-* Store runtime-specific code under a root runtime assembly definition file:
-
-  `Runtime/Xiahogzhi.PuffinGameFramework.asmdef`
-
-* Configure related test assemblies for your editor and runtime scripts:
-
-  `Tests/Editor/Xiahogzhi.PuffinGameFramework.Editor.Tests.asmdef`
-
-  `Tests/Runtime/Xiahogzhi.PuffinGameFramework.Tests.asmdef`
-
-To get a more general view of a recommended package folder layout, see [Package layout](https://docs.unity3d.com/Manual/cus-layout.html).
-
-
-
-<a name="Doc"></a>
-### Providing documentation
-
-Use the `Documentations~/Puffin Game Framework.md` documentation file to create preliminary, high-level documentation. This document should introduce users to the features and sample files included in your package.  Your package documentation files will be used to generate online and local docs, available from the Package Manager UI.
-
-**Document your public APIs**
-* All public APIs need to be documented with **XmlDoc**.
-* API documentation is generated from [XmlDoc tags](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/xmldoc/xml-documentation-comments) included with all public APIs found in the package. See [Editor/EditorExample.cs](Editor/EditorExample.cs) for an example.
-
-
-
-
-<a name="Populate"></a>
-### Adding Assets to your package
-
-If your package contains a sample, rename the `Samples/Example` folder, and update the `.sample.json` file in it.
-
-In the case where your package contains multiple samples, you can make a copy of the `Samples/Example` folder for each sample, and update the `.sample.json` file accordingly.
-
-Similar to `.tests.json` file, there is a `"createSeparatePackage"` field in `.sample.json`. If set to true, the CI will create a separate package for the sample.
-
-Delete the `Samples` folder altogether if your package does not need samples.
-
-As of Unity release 2019.1, the Package Manager recognizes the `/Samples` directory in a package. Unity doesn't automatically import samples when a user adds the package to a Project. However, users can click a button in the details view of a package in the **Packages** window to optionally import samples into their `/Assets` directory.
-
-
-
-
-<a name="Valid"></a>
-### Validating your package
-
-Before you publish your package, you need to make sure that it passes all the necessary validation checks by using the Package Validation Suite extension (optional).
-
-Once you install the Validation Suite package, a **Validate** button appears in the details view of a package in the **Packages** window. To install the extension, follow these steps:
-
-1. Point your Project manifest to a staging registry by adding this line to the manifest: 
-    `"registry": "https://staging-packages.unity.com"`
-2. Install the **Package Validation Suite v0.3.0-preview.13** or above from the **Packages** window in Unity. Make sure the package scope is set to **All Packages**, and select **Show preview packages** from the **Advanced** menu.
-3. After installation, a **Validate** button appears in the **Packages** window. Click the button to run a series of tests, then click the **See Results** button for additional information:
-    * If it succeeds, a green bar with a **Success** message appears.
-    * If it fails, a red bar with a **Failed** message appears.
-
-**NOTE:** The validation suite is still in preview.
-
-
-
-
-<a name="Tests"></a>
-### Adding tests to your package
-
-All packages must contain tests.  Tests are essential for Unity to ensure that the package works as expected in different scenarios.
-
-**Editor tests**
-* Write all your Editor Tests in `Tests/Editor`
-
-**Playmode Tests**
-
-* Write all your Playmode Tests in `Tests/Runtime`.
-
-#### Separating the tests from the package
-
-You can create a separate package for the tests, which allows you to exclude a large number of tests and Assets from being published in your main package, while still making it easy to test it.
-
-Open the `Tests/.tests.json` file and set the **createSeparatePackage** attribute:
-
-| **Value to set:** | **Result:**                                                  |
-| ----------------- | ------------------------------------------------------------ |
-| **true**          | CI creates a separate package for these tests. At publish time, the Package Manager adds metadata to link the packages together. |
-| **false**         | Keep the tests as part of the published package.             |
-
-
-
-<a name="Legal"></a>
-### Meeting the legal requirements
-
-You can use the Third Party Notices.md file to make sure your package meets any legal requirements. For example, here is a sample license file from the Unity Timeline package:
-
-```
-Unity Timeline copyright © 2017-2019 Unity Technologies ApS
-
-Licensed under the Unity Companion License for Unity-dependent projects--see [Unity Companion License](http://www.unity3d.com/legal/licenses/Unity_Companion_License).
-
-Unless expressly provided otherwise, the Software under this license is made available strictly on an “AS IS” BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. Please review the license for details on these and other terms and conditions.
-
+## 快速开始
+
+### 创建系统
+
+```csharp
+[AutoRegister]
+public class PlayerSystem : ISystem, ISystemInitialize, ISystemUpdate
+{
+    [Inject] private InputSystem _input;
+    [WeakInject] private AudioSystem _audio; // 可选依赖
+
+    public async UniTask OnInitializeAsync()
+    {
+        // 初始化逻辑
+    }
+
+    public void OnUpdate()
+    {
+        // 每帧更新
+    }
+}
 ```
 
+### 获取系统
 
-
-#### Third Party Notices
-
-If your package has third-party elements, you can include the licenses in a Third Party Notices.md file. You can include a **Component Name**, **License Type**, and **Provide License Details** section for each license you want to include. For example:
-
-```
-This package contains third-party software components governed by the license(s) indicated below:
-
-Component Name: Semver
-
-License Type: "MIT"
-
-[SemVer License](https://github.com/myusername/semver/blob/master/License.txt)
-
-Component Name: MyComponent
-
-License Type: "MyLicense"
-
-[MyComponent License](https://www.mycompany.com/licenses/License.txt)
-
+```csharp
+var player = AzathrixFramework.GetSystem<PlayerSystem>();
 ```
 
-**NOTE**: Any URLs you use should point to a location that contains the reproduced license and the copyright information (if applicable).
+### 事件系统
+
+```csharp
+// 定义事件
+public enum GameEvent { PlayerDied, LevelComplete }
+
+// 注册监听
+AzathrixFramework.Dispatcher.On<GameEvent>(GameEvent.PlayerDied, evt =>
+{
+    Debug.Log("Player died!");
+}).Priority(100).AddTo(gameObject);
+
+// 触发事件
+AzathrixFramework.Dispatcher.Emit(GameEvent.PlayerDied);
+
+// 带参数的事件
+AzathrixFramework.Dispatcher.Emit(GameEvent.LevelComplete, new { score = 1000 });
+```
+
+## 系统属性
+
+| 属性 | 说明 |
+|------|------|
+| `[AutoRegister]` | 自动注册系统 |
+| `[Inject]` | 依赖注入（必须存在） |
+| `[WeakInject]` | 弱依赖注入（可为空） |
+| `[DependsOn(typeof(...))]` | 声明系统依赖顺序 |
+| `[SystemPriority(n)]` | 系统优先级（越小越先） |
+| `[SystemAlias("name")]` | 系统别名 |
+| `[UpdateInterval(ms)]` | Update 调用间隔 |
+| `[ConditionalSystem("SYMBOL")]` | 条件编译注册 |
+
+## 生命周期接口
+
+| 接口 | 说明 |
+|------|------|
+| `ISystemRegister` | 注册时调用 |
+| `ISystemInitialize` | 异步初始化 |
+| `ISystemEnabled` | 启用/禁用回调 |
+| `ISystemUpdate` | 每帧更新 |
+| `ISystemFixedUpdate` | 固定时间步更新 |
+| `ISystemLateUpdate` | 延迟更新 |
+| `ISystemApplicationPause` | 应用暂停/恢复 |
+| `ISystemApplicationFocusChanged` | 焦点变化 |
+| `ISystemApplicationQuit` | 应用退出 |
+| `ISystemEditorSupport` | 编辑器模式支持 |
+
+## 启动管线
+
+框架使用阶段化管线启动，支持自定义阶段和钩子：
+
+### 运行时阶段
+
+| 阶段 | Order | 说明 |
+|------|-------|------|
+| `IResourceLoadPhase` | 0 | 资源加载 |
+| `IAssemblyLoadPhase` | 100 | 程序集加载（HybridCLR） |
+| `ISetupPhase` | 200 | 框架配置 |
+| `IScanPhase` | 300 | 系统扫描 |
+| `IRegisterPhase` | 400 | 系统注册 |
+| `IStartPhase` | 500 | 启动完成 |
+
+### 自定义阶段
+
+```csharp
+[PhaseOrder(150)] // 在 Setup 之前执行
+public class MyPhase : ISetupPhase
+{
+    public async UniTask ExecuteAsync(PhaseContext context)
+    {
+        // 自定义逻辑
+    }
+}
+```
+
+### 阶段钩子
+
+```csharp
+// 在扫描阶段之前执行
+public class MyBeforeHook : IBeforePhaseHook<IScanPhase>
+{
+    public int Order => 0;
+
+    public async UniTask<bool> OnBeforeAsync(PhaseContext context)
+    {
+        // 返回 false 可中断管线
+        return true;
+    }
+}
+
+// 在注册阶段之后执行
+public class MyAfterHook : IAfterPhaseHook<IRegisterPhase>
+{
+    public int Order => 0;
+
+    public async UniTask OnAfterAsync(PhaseContext context)
+    {
+        // 注册完成后的处理
+    }
+}
+```
+
+### 常见用例
+
+```csharp
+// 热更新：在程序集加载阶段之前
+public class HotUpdateHook : IBeforePhaseHook<IAssemblyLoadPhase>
+{
+    public int Order => 0;
+
+    public async UniTask<bool> OnBeforeAsync(PhaseContext context)
+    {
+        await CheckAndDownloadUpdate();
+        return true;
+    }
+}
+
+// 自定义资源加载器：在 Setup 阶段之前
+public class CustomLoaderHook : IBeforePhaseHook<ISetupPhase>
+{
+    public int Order => 0;
+
+    public async UniTask<bool> OnBeforeAsync(PhaseContext context)
+    {
+        context.ResourcesLoader = new MyResourcesLoader();
+        return true;
+    }
+}
+
+// 加载首场景：在启动阶段之后
+public class LoadSceneHook : IAfterPhaseHook<IStartPhase>
+{
+    public int Order => 0;
+
+    public async UniTask OnAfterAsync(PhaseContext context)
+    {
+        await SceneManager.LoadSceneAsync("MainMenu");
+    }
+}
+```
+
+## 编辑器工具
+
+- **Azathrix > Settings** - 框架配置
+- **Azathrix > System Registry** - 系统注册管理
+- **Azathrix > System Monitor** - 运行时系统监控
+
+## 配置说明
+
+在 `Assets/Resources/AzathrixFrameworkSettings.asset` 中配置：
+
+- **扫描模式** - All（全部）或 Specified（指定程序集）
+- **只扫描 [AutoRegister]** - 是否只注册带标记的系统
+- **自动初始化** - 进入 Play 模式时自动启动框架
+- **编辑器支持** - 编辑器模式下初始化支持的系统
+
+## 依赖
+
+- UniTask
+
+## License
+
+MIT

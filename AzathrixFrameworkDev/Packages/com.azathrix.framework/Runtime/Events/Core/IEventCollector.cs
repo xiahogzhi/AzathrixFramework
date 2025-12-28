@@ -1,4 +1,4 @@
-﻿namespace ParaCrossGames.Framework.Events.Core
+﻿namespace Azathrix.Framework.Events.Core
 {
     /// <summary>
     /// 事件收集器接口，实现此接口的类可以使用 AddTo 方法绑定事件生命周期

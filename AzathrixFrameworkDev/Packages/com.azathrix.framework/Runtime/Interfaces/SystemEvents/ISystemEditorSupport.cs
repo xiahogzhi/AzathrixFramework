@@ -1,4 +1,4 @@
-namespace ParaCrossGames.Framework.Interfaces.SystemEvents
+namespace Azathrix.Framework.Interfaces.SystemEvents
 {
     /// <summary>
     /// 编辑器支持接口，实现此接口的系统会在编辑器模式下初始化

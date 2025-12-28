@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ParaCrossGames.Framework.Core.Configs
+namespace Azathrix.Framework.Core.Configs
 {
     /// <summary>
     /// Runtime 配置

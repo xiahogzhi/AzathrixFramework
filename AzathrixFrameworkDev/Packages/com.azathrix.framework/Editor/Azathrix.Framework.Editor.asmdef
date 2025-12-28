@@ -2,8 +2,6 @@
     "name": "Azathrix.Framework.Editor",
     "rootNamespace": "Azathrix.Framework",
     "references": [
-        "GUID:38a90ffdb913bc540a8d016ca92935c0",
-        "GUID:f51ebe6a0ceec4240a699833d6309b23",
         "GUID:4b9323466a12a244b94a9635d32050aa",
         "GUID:72e0ad03c7626ff40b98baa9c3df88a5"
     ],

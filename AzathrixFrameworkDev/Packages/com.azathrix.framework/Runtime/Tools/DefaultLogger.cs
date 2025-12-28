@@ -3,13 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
-using ParaCrossGames.Framework.Interfaces;
-using ParaCrossGames.Framework.Settings;
+using Azathrix.Framework.Settings;
 using UnityEngine;
-using ILogger = ParaCrossGames.Framework.Interfaces.ILogger;
+using ILogger = Azathrix.Framework.Interfaces.ILogger;
 using Object = UnityEngine.Object;
 
-namespace ParaCrossGames.Framework.Tools
+namespace Azathrix.Framework.Tools
 {
     /// <summary>
     /// 默认日志记录器实现，支持颜色、标签、堆栈跟踪等功能

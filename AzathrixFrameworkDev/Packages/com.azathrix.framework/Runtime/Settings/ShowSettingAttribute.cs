@@ -1,6 +1,6 @@
 using System;
 
-namespace ParaCrossGames.Framework.Settings
+namespace Azathrix.Framework.Settings
 {
     /// <summary>
     /// 标记设置类在 Settings 窗口中显示

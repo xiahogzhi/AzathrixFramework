@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Settings
+namespace Azathrix.Framework.Settings
 {
     /// <summary>
     /// 系统注册信息
@@ -33,7 +33,7 @@ namespace ParaCrossGames.Framework.Settings
     /// 系统注册配置 - 控制哪些系统可以被注册
     /// </summary>
     [SettingsPath("SystemRegistrySettings")]
-    // [CreateAssetMenu(fileName = "SystemRegistrySettings", menuName = "PuffinFramework/System Registry Settings")]
+    // [CreateAssetMenu(fileName = "SystemRegistrySettings", menuName = "AzathrixFramework/System Registry Settings")]
     public class SystemRegistrySettings : SettingsBase<SystemRegistrySettings>
     {
         [Tooltip("系统注册列表")]

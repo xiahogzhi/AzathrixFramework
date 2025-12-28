@@ -1,6 +1,6 @@
 using System;
 
-namespace ParaCrossGames.Framework.Core.Attributes
+namespace Azathrix.Framework.Core.Attributes
 {
     /// <summary>
     /// 默认系统特性,当系统不存在其他实现时会使用这个默认系统

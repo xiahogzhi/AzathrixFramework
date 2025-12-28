@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Events.Core
+namespace Azathrix.Framework.Events.Core
 {
     /// <summary>
     /// 事件结果销毁器组件，自动挂载到 GameObject 上

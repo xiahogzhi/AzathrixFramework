@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ParaCrossGames.Framework.Events.Enums
+namespace Azathrix.Framework.Events.Enums
 {
     /// <summary>
     /// 标记事件属性为参数，用于事件系统的元数据标记

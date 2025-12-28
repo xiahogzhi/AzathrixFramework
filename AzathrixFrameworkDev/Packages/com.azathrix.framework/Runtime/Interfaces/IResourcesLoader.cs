@@ -1,7 +1,7 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Interfaces
+namespace Azathrix.Framework.Interfaces
 {
     public interface IResourcesLoader
     {

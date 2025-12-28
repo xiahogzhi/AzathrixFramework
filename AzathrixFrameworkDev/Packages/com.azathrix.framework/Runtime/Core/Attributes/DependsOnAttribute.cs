@@ -1,6 +1,6 @@
 using System;
 
-namespace ParaCrossGames.Framework.Core.Attributes
+namespace Azathrix.Framework.Core.Attributes
 {
     /// <summary>
     /// 标记系统依赖，确保依赖的系统先初始化

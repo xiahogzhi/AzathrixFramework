@@ -1,4 +1,4 @@
-namespace ParaCrossGames.Framework.Interfaces.SystemEvents
+namespace Azathrix.Framework.Interfaces.SystemEvents
 {
     /// <summary>
     /// 应用焦点变化事件接口，在应用获得/失去焦点时调用

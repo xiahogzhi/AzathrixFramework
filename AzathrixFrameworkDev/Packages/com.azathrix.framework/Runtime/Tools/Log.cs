@@ -1,22 +1,22 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using ParaCrossGames.Framework.Core;
-using ParaCrossGames.Framework.Interfaces;
+using Azathrix.Framework.Core;
+using Azathrix.Framework.Interfaces;
 using Object = UnityEngine.Object;
 
-namespace ParaCrossGames.Framework.Tools
+namespace Azathrix.Framework.Tools
 {
     /// <summary>
     /// 日志工具类，提供静态方法访问框架日志系统
-    /// 是 PuffinFramework.Logger 的便捷封装
+    /// 是 AzathrixFramework.Logger 的便捷封装
     /// </summary>
     public static class Log
     {
         /// <summary>
         /// 获取当前日志记录器实例
         /// </summary>
-        public static ILogger Logger => PuffinFramework.Logger;
+        public static ILogger Logger => AzathrixFramework.Logger;
 
         /// <summary>
         /// 输出详细日志

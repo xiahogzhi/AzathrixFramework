@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
-using ParaCrossGames.Framework.Settings;
+using Azathrix.Framework.Settings;
 using UnityEditor;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Editor.Core
+namespace Azathrix.Framework.Editor.Core
 {
     /// <summary>
     /// 编辑器启动时自动初始化所有设置

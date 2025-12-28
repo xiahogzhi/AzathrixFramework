@@ -3,13 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using ParaCrossGames.Framework.Core.Attributes;
-using ParaCrossGames.Framework.Interfaces;
-using ParaCrossGames.Framework.Settings;
+using Azathrix.Framework.Core.Attributes;
+using Azathrix.Framework.Interfaces;
+using Azathrix.Framework.Settings;
 using UnityEditor;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Editor.Core
+namespace Azathrix.Framework.Editor.Core
 {
     /// <summary>
     /// 系统注册表窗口，管理游戏系统的启用/禁用状态和接口实现选择
@@ -61,7 +61,7 @@ namespace ParaCrossGames.Framework.Editor.Core
         private Dictionary<string, bool> _groupFoldouts = new();
         private const string CoreGroupName = "Core";
 
-        [MenuItem("Puffin Games/系统注册表")]
+        [MenuItem("Azathrix/系统注册表")]
         public static void ShowWindow()
         {
             GetWindow<SystemRegistryWindow>("System Registry");
@@ -589,7 +589,7 @@ namespace ParaCrossGames.Framework.Editor.Core
 
         /// <summary>
         /// 从程序集名称提取模块ID
-        /// 例如: PuffinFramework.Config.Runtime -> Config
+        /// 例如: AzathrixFramework.Config.Runtime -> Config
         /// </summary>
         private string ExtractModuleId(string assemblyName)
         {

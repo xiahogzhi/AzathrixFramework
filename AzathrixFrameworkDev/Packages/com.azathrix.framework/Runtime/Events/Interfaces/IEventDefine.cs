@@ -1,4 +1,4 @@
-﻿namespace ParaCrossGames.Framework.Events.Interfaces
+﻿namespace Azathrix.Framework.Events.Interfaces
 {
     /// <summary>
     /// 事件定义接口，所有事件类型必须实现此接口

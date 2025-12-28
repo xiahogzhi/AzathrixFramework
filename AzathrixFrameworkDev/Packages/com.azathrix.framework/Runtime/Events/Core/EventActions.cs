@@ -1,6 +1,6 @@
 using Cysharp.Threading.Tasks;
 
-namespace ParaCrossGames.Framework.Events.Core
+namespace Azathrix.Framework.Events.Core
 {
     /// <summary>
     /// 事件系统委托定义

@@ -1,4 +1,4 @@
-namespace ParaCrossGames.Framework.Interfaces.SystemEvents
+namespace Azathrix.Framework.Interfaces.SystemEvents
 {
     /// <summary>
     /// 系统启用/禁用接口，实现此接口的系统可以在运行时动态启用或禁用

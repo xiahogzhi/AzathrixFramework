@@ -1,6 +1,6 @@
 using System;
 
-namespace ParaCrossGames.Framework.Core.Attributes
+namespace Azathrix.Framework.Core.Attributes
 {
     /// <summary>
     /// 条件注册系统，只有定义了指定符号时才注册

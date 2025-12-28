@@ -1,6 +1,6 @@
 using System;
 
-namespace ParaCrossGames.Framework.Core.Attributes
+namespace Azathrix.Framework.Core.Attributes
 {
     /// <summary>
     /// 弱引用注入 - 可选依赖，不存在时不报错

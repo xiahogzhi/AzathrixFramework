@@ -1,9 +1,9 @@
 #if UNITY_EDITOR
-using ParaCrossGames.Framework.Settings;
+using Azathrix.Framework.Settings;
 using UnityEditor;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Editor.Core
+namespace Azathrix.Framework.Editor.Core
 {
     /// <summary>
     /// LogSettings 的自定义编辑器

@@ -1,4 +1,4 @@
-namespace ParaCrossGames.Framework.Interfaces.SystemEvents
+namespace Azathrix.Framework.Interfaces.SystemEvents
 {
     /// <summary>
     /// 延迟更新接口，实现此接口的系统将在所有 Update 之后被调用

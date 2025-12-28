@@ -1,4 +1,4 @@
-﻿namespace ParaCrossGames.Framework.Tools
+﻿namespace Azathrix.Framework.Tools
 {
     /// <summary>
     /// 泛型单例基类，提供线程安全的单例实现

@@ -1,4 +1,4 @@
-namespace ParaCrossGames.Framework.Interfaces.SystemEvents
+namespace Azathrix.Framework.Interfaces.SystemEvents
 {
     /// <summary>
     /// 应用退出事件接口，在应用退出时调用

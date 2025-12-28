@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Azathrix.Framework.Events.Interfaces;
+using Azathrix.Framework.Tools;
 using Cysharp.Threading.Tasks;
-using ParaCrossGames.Framework.Events.Interfaces;
-using ParaCrossGames.Framework.Tools;
 
-namespace ParaCrossGames.Framework.Events.Core
+namespace Azathrix.Framework.Events.Core
 {
     public enum InterceptorStateEnum
     {

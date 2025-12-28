@@ -1,6 +1,6 @@
 using Cysharp.Threading.Tasks;
 
-namespace ParaCrossGames.Framework.Interfaces.SystemEvents
+namespace Azathrix.Framework.Interfaces.SystemEvents
 {
     /// <summary>
     /// 异步初始化接口，系统注册后会调用

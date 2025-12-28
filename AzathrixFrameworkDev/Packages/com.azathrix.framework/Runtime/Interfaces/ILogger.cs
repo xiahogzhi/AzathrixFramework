@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using Object = UnityEngine.Object;
 
-namespace ParaCrossGames.Framework.Interfaces
+namespace Azathrix.Framework.Interfaces
 {
     /// <summary>
     /// 框架日志接口，定义日志输出的标准方法

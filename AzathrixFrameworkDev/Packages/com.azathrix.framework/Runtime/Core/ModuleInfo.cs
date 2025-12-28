@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Core
+namespace Azathrix.Framework.Core
 {
     /// <summary>
     /// 模块信息定义

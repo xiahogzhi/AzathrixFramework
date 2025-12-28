@@ -1,6 +1,6 @@
 using System;
 
-namespace ParaCrossGames.Framework.Core.Attributes
+namespace Azathrix.Framework.Core.Attributes
 {
     /// <summary>
     /// 系统别名特性 - 通过字符串名称获取系统

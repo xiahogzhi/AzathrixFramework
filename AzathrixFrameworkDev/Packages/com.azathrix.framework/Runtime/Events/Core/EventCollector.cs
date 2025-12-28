@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace ParaCrossGames.Framework.Events.Core
+namespace Azathrix.Framework.Events.Core
 {
     /// <summary>
     /// 事件收集器，用于统一管理和销毁多个事件注册

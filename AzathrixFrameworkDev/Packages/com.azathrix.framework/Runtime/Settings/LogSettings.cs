@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Settings
+namespace Azathrix.Framework.Settings
 {
     /// <summary>
     /// 日志级别枚举

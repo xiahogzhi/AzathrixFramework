@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "com.azathrix.upm-editor": "1.0.0",
+    "com.azathrix.framework": "0.0.1",
+    "com.azathrix.upm-editor": "1.0.2",
     "com.unity.ide.rider": "3.0.38",
     "com.unity.inputsystem": "1.17.0",
     "com.unity.multiplayer.center": "1.0.1",

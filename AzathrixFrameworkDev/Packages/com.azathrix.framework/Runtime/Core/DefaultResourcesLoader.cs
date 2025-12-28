@@ -1,8 +1,8 @@
+using Azathrix.Framework.Interfaces;
 using Cysharp.Threading.Tasks;
-using ParaCrossGames.Framework.Interfaces;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Core
+namespace Azathrix.Framework.Core
 {
     /// <summary>
     /// 默认资源加载器，基于 Unity Resources 系统实现

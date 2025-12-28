@@ -1,6 +1,6 @@
-﻿using ParaCrossGames.Framework.Events.Interfaces;
+﻿using Azathrix.Framework.Events.Interfaces;
 
-namespace ParaCrossGames.Framework.Core
+namespace Azathrix.Framework.Core
 {
     /// <summary>
     /// 系统事件定义集合

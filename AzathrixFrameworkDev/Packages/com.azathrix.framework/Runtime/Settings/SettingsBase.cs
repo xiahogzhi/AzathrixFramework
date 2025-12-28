@@ -1,9 +1,9 @@
 using System;
 using System.IO;
-using ParaCrossGames.Framework.Core;
+using Azathrix.Framework.Core;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Settings
+namespace Azathrix.Framework.Settings
 {
     /// <summary>
     /// 设置路径特性，用于指定 Resources 下的路径
@@ -42,19 +42,23 @@ namespace ParaCrossGames.Framework.Settings
             {
 #if UNITY_EDITOR
                 // 编辑器中始终从 AssetDatabase 加载，避免 Play 模式问题
-                if (_instance == null)
+                // 检查 _instance 是否为 null 或已被销毁（Play 模式退出后可能发生）
+                if (_instance == null || !_instance)
                 {
-                     var path = GetResourcePath();
-                    // 先尝试从模块 Resources 目录加载
-                    // var moduleResourcesPath = GetModuleResourcesPath();
-                    // var assetPath = $"Assets{moduleResourcesPath}/{path}.asset";
-                    // var assetPath = $"Assets/Resources/{path}.asset";
-                    _instance = Resources.Load<T>(path);
+                    var path = GetResourcePath();
+                    // 使用 AssetDatabase 加载以确保获取正确的资产引用
+                    var assetPath = $"Assets/Resources/{path}.asset";
+                    _instance = UnityEditor.AssetDatabase.LoadAssetAtPath<T>(assetPath);
+                    if (_instance == null)
+                    {
+                        // 回退到 Resources.Load
+                        _instance = Resources.Load<T>(path);
+                    }
                     if (_instance == null)
                         _instance = CreateDefault(path);
                 }
 #else
-                if (!PuffinFramework.IsSetup) throw new Exception("PuffinFramework is not setup");
+                if (!AzathrixFramework.IsSetup) throw new Exception("AzathrixFramework is not setup");
                 var c = CreateInstance<T>();
                 c.LoadSetting();
                 Destroy(c);
@@ -72,7 +76,7 @@ namespace ParaCrossGames.Framework.Settings
             if (_instance == null)
             {
                 var path = GetResourcePath();
-                _instance = PuffinFramework.ResourcesLoader.Load<T>(path);
+                _instance = AzathrixFramework.ResourcesLoader.Load<T>(path);
             }
         }
 
@@ -117,7 +121,7 @@ namespace ParaCrossGames.Framework.Settings
         //     }
         //
         //     // 默认回退到框架 Resources 目录
-        //     return "Assets/Puffin/Resources";
+        //     return "Assets/Azathrix/Resources";
         // }
 
         private static T CreateDefault(string resourcePath)
@@ -136,7 +140,7 @@ namespace ParaCrossGames.Framework.Settings
             UnityEditor.AssetDatabase.CreateAsset(settings, assetPath);
             UnityEditor.AssetDatabase.SaveAssets();
 
-            Debug.Log($"[PuffinFramework] 已创建默认配置: {assetPath}");
+            Debug.Log($"[AzathrixFramework] 已创建默认配置: {assetPath}");
             return settings;
         }
 

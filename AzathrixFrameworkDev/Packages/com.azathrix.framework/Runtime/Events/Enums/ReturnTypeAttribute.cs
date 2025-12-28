@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ParaCrossGames.Framework.Events.Enums
+namespace Azathrix.Framework.Events.Enums
 {
     /// <summary>
     /// 标记事件的返回类型，用于事件系统的元数据标记

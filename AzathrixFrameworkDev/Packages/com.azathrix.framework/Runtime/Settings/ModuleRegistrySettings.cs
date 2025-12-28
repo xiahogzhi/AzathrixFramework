@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ParaCrossGames.Framework.Settings
+namespace Azathrix.Framework.Settings
 {
     /// <summary>
     /// 模块注册条目
@@ -19,7 +19,7 @@ namespace ParaCrossGames.Framework.Settings
     /// 模块注册配置 - 管理模块的启用/禁用状态
     /// </summary>
     [SettingsPath("ModuleRegistrySettings")]
-    // [CreateAssetMenu(fileName = "ModuleRegistrySettings", menuName = "PuffinFramework/Module Registry Settings")]
+    // [CreateAssetMenu(fileName = "ModuleRegistrySettings", menuName = "AzathrixFramework/Module Registry Settings")]
     public class ModuleRegistrySettings : SettingsBase<ModuleRegistrySettings>
     {
         [Tooltip("模块列表")]

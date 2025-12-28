@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace ParaCrossGames.Framework.Core.Configs
+namespace Azathrix.Framework.Core.Configs
 {
     /// <summary>
     /// 扫描器配置

@@ -1,7 +1,7 @@
-using ParaCrossGames.Framework.Core.Configs;
-using ParaCrossGames.Framework.Interfaces;
+using Azathrix.Framework.Core.Configs;
+using Azathrix.Framework.Interfaces;
 
-namespace ParaCrossGames.Framework.Core
+namespace Azathrix.Framework.Core
 {
     /// <summary>
     /// 框架初始化上下文，用于配置框架启动时的各项参数
