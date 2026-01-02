@@ -9,6 +9,6 @@ namespace Puffin.Modules.ResourcesSystemInterface.Runtime
     /// </summary>
     public interface IResourcesSystem : IResourcesLoader
     {
-     
+
     }
 }

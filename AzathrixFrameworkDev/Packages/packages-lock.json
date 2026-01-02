@@ -8,6 +8,27 @@
         "com.azathrix.unitask": "2.5.10"
       }
     },
+    "com.azathrix.game-kit": {
+      "version": "file:com.azathrix.game-kit",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.azathrix.framework": "0.0.3",
+        "com.azathrix.unitask": "2.5.10"
+      }
+    },
+    "com.azathrix.mini-panda": {
+      "version": "file:com.azathrix.mini-panda",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.azathrix.timer": {
+      "version": "file:com.azathrix.timer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.azathrix.unitask": {
       "version": "2.5.10",
       "depth": 1,
@@ -16,10 +37,11 @@
       "url": "http://www.inputname.com:4873"
     },
     "com.azathrix.upm-editor": {
-      "version": "file:com.azathrix.upm-editor",
+      "version": "1.0.2",
       "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
+      "source": "registry",
+      "dependencies": {},
+      "url": "http://www.inputname.com:4873"
     },
     "com.singularitygroup.hotreload": {
       "version": "file:com.singularitygroup.hotreload",
