@@ -537,7 +537,7 @@ namespace Azathrix.MiniPanda.Tests
         [Test]
         public void CSharp_NativeFunction()
         {
-            _vm.SetGlobal("square", Value.FromObject(NativeFunc.Create((Value v) =>
+            _vm.SetGlobal("square", Value.FromObject(NativeFunction.Create((Value v) =>
                 Value.FromNumber(v.AsNumber() * v.AsNumber()))));
 
             var result = _vm.Eval("square(5)");
@@ -547,7 +547,7 @@ namespace Azathrix.MiniPanda.Tests
         [Test]
         public void CSharp_CallScriptFunction()
         {
-            _vm.SetGlobal("multiply", Value.FromObject(NativeFunc.Create((Value a, Value b) =>
+            _vm.SetGlobal("multiply", Value.FromObject(NativeFunction.Create((Value a, Value b) =>
                 Value.FromNumber(a.AsNumber() * b.AsNumber()))));
             Assert.AreEqual(42.0, _vm.Run("return multiply(6, 7)").AsNumber());
         }
@@ -1258,29 +1258,29 @@ namespace Azathrix.MiniPanda.Tests
         public void Builtin_JSON_Parse()
         {
             // Parse object
-            var obj = _vm.Run("return JSON.parse(\"\\{\\\"name\\\":\\\"test\\\",\\\"value\\\":42\\}\")").As<MiniPandaObject>();
+            var obj = _vm.Run("return json.parse(\"\\{\\\"name\\\":\\\"test\\\",\\\"value\\\":42\\}\")").As<MiniPandaObject>();
             Assert.AreEqual("test", obj.Get("name").AsString());
             Assert.AreEqual(42.0, obj.Get("value").AsNumber());
 
             // Parse array
-            var arr = _vm.Run("return JSON.parse(\"[1,2,3]\")").As<MiniPandaArray>();
+            var arr = _vm.Run("return json.parse(\"[1,2,3]\")").As<MiniPandaArray>();
             Assert.AreEqual(3, arr.Length);
             Assert.AreEqual(2.0, arr.Get(1).AsNumber());
 
             // Parse primitives
-            Assert.AreEqual(42.0, _vm.Run("return JSON.parse(\"42\")").AsNumber());
-            Assert.AreEqual(true, _vm.Run("return JSON.parse(\"true\")").AsBool());
-            Assert.IsTrue(_vm.Run("return JSON.parse(\"null\")").IsNull);
+            Assert.AreEqual(42.0, _vm.Run("return json.parse(\"42\")").AsNumber());
+            Assert.AreEqual(true, _vm.Run("return json.parse(\"true\")").AsBool());
+            Assert.IsTrue(_vm.Run("return json.parse(\"null\")").IsNull);
         }
 
         [Test]
         public void Builtin_JSON_Stringify()
         {
-            Assert.AreEqual("{\"name\":\"test\",\"value\":42}", _vm.Run("return JSON.stringify({name: \"test\", value: 42})").AsString());
-            Assert.AreEqual("[1,2,3]", _vm.Run("return JSON.stringify([1, 2, 3])").AsString());
-            Assert.AreEqual("42", _vm.Run("return JSON.stringify(42)").AsString());
-            Assert.AreEqual("true", _vm.Run("return JSON.stringify(true)").AsString());
-            Assert.AreEqual("null", _vm.Run("return JSON.stringify(null)").AsString());
+            Assert.AreEqual("{\"name\":\"test\",\"value\":42}", _vm.Run("return json.stringify({name: \"test\", value: 42})").AsString());
+            Assert.AreEqual("[1,2,3]", _vm.Run("return json.stringify([1, 2, 3])").AsString());
+            Assert.AreEqual("42", _vm.Run("return json.stringify(42)").AsString());
+            Assert.AreEqual("true", _vm.Run("return json.stringify(true)").AsString());
+            Assert.AreEqual("null", _vm.Run("return json.stringify(null)").AsString());
         }
 
         [Test]
@@ -1310,6 +1310,236 @@ namespace Azathrix.MiniPanda.Tests
             var trace = result.AsString();
             Assert.IsTrue(trace.Contains("inner"));
             Assert.IsTrue(trace.Contains("outer"));
+        }
+
+        // ========== String Interpolation Tests ==========
+
+        [Test]
+        public void StringInterpolation_Basic()
+        {
+            Assert.AreEqual("Hello World!", _vm.Run("var name = \"World\"\nreturn \"Hello {name}!\"").AsString());
+        }
+
+        [Test]
+        public void StringInterpolation_Expression()
+        {
+            Assert.AreEqual("Result: 15", _vm.Run("return \"Result: {10 + 5}\"").AsString());
+        }
+
+        [Test]
+        public void StringInterpolation_Multiple()
+        {
+            Assert.AreEqual("a=1, b=2", _vm.Run("var a = 1\nvar b = 2\nreturn \"a={a}, b={b}\"").AsString());
+        }
+
+        [Test]
+        public void StringInterpolation_Nested()
+        {
+            Assert.AreEqual("Name: test", _vm.Run("var obj = {name: \"test\"}\nreturn \"Name: {obj.name}\"").AsString());
+        }
+
+        [Test]
+        public void StringInterpolation_EscapedBrace()
+        {
+            Assert.AreEqual("{literal}", _vm.Run("return \"\\{literal}\"").AsString());
+        }
+
+        // ========== Null Coalescing Tests ==========
+
+        [Test]
+        public void NullCoalesce_LeftNotNull()
+        {
+            Assert.AreEqual(5, _vm.Run("return 5 ?? 10").AsNumber());
+        }
+
+        [Test]
+        public void NullCoalesce_LeftNull()
+        {
+            Assert.AreEqual(10, _vm.Run("return null ?? 10").AsNumber());
+        }
+
+        [Test]
+        public void NullCoalesce_Chain()
+        {
+            Assert.AreEqual(3, _vm.Run("return null ?? null ?? 3").AsNumber());
+        }
+
+        [Test]
+        public void NullCoalesce_WithVariable()
+        {
+            Assert.AreEqual("default", _vm.Run("var x = null\nreturn x ?? \"default\"").AsString());
+        }
+
+        [Test]
+        public void NullCoalesce_StringNotNull()
+        {
+            Assert.AreEqual("hello", _vm.Run("var s = \"hello\"\nreturn s ?? \"default\"").AsString());
+        }
+
+        // ========== Collection Functions Tests ==========
+
+        [Test]
+        public void Builtin_Keys()
+        {
+            var result = _vm.Run("var obj = {a: 1, b: 2}\nreturn keys(obj)");
+            Assert.AreEqual(2, result.As<MiniPandaArray>().Length);
+        }
+
+        [Test]
+        public void Builtin_Values()
+        {
+            var result = _vm.Run("var obj = {a: 1, b: 2}\nreturn values(obj)");
+            Assert.AreEqual(2, result.As<MiniPandaArray>().Length);
+        }
+
+        [Test]
+        public void Builtin_Contains_Array()
+        {
+            Assert.AreEqual(true, _vm.Run("return contains([1, 2, 3], 2)").AsBool());
+            Assert.AreEqual(false, _vm.Run("return contains([1, 2, 3], 5)").AsBool());
+        }
+
+        [Test]
+        public void Builtin_Contains_Object()
+        {
+            Assert.AreEqual(true, _vm.Run("return contains({a: 1}, \"a\")").AsBool());
+            Assert.AreEqual(false, _vm.Run("return contains({a: 1}, \"b\")").AsBool());
+        }
+
+        [Test]
+        public void Builtin_Contains_String()
+        {
+            Assert.AreEqual(true, _vm.Run("return contains(\"hello\", \"ell\")").AsBool());
+            Assert.AreEqual(false, _vm.Run("return contains(\"hello\", \"xyz\")").AsBool());
+        }
+
+        [Test]
+        public void Builtin_Slice_Array()
+        {
+            Assert.AreEqual(2, _vm.Run("return slice([1,2,3,4], 1, 3)").As<MiniPandaArray>().Length);
+        }
+
+        [Test]
+        public void Builtin_Slice_String()
+        {
+            Assert.AreEqual("ell", _vm.Run("return slice(\"hello\", 1, 4)").AsString());
+        }
+
+        [Test]
+        public void Builtin_Join()
+        {
+            Assert.AreEqual("a-b-c", _vm.Run("return join([\"a\", \"b\", \"c\"], \"-\")").AsString());
+        }
+
+        [Test]
+        public void Builtin_Split()
+        {
+            Assert.AreEqual(3, _vm.Run("return split(\"a,b,c\", \",\")").As<MiniPandaArray>().Length);
+        }
+
+        // ========== Default Parameters Tests ==========
+
+        [Test]
+        public void DefaultParam_Basic()
+        {
+            Assert.AreEqual(10, _vm.Run("func foo(x = 10) { return x }\nreturn foo()").AsNumber());
+        }
+
+        [Test]
+        public void DefaultParam_Override()
+        {
+            Assert.AreEqual(5, _vm.Run("func foo(x = 10) { return x }\nreturn foo(5)").AsNumber());
+        }
+
+        [Test]
+        public void DefaultParam_Multiple()
+        {
+            Assert.AreEqual(30, _vm.Run("func add(a, b = 10, c = 20) { return a + b + c }\nreturn add(0)").AsNumber());
+        }
+
+        [Test]
+        public void DefaultParam_PartialOverride()
+        {
+            Assert.AreEqual(25, _vm.Run("func add(a, b = 10, c = 20) { return a + b + c }\nreturn add(0, 5)").AsNumber());
+        }
+
+        [Test]
+        public void DefaultParam_Lambda()
+        {
+            Assert.AreEqual(10, _vm.Run("var f = (x = 10) => x\nreturn f()").AsNumber());
+        }
+
+        // ========== Rest Parameter Tests ==========
+
+        [Test]
+        public void RestParam_Basic()
+        {
+            // Basic rest parameter collects all args
+            Assert.AreEqual(3, _vm.Run("func sum(...args) { return len(args) }\nreturn sum(1, 2, 3)").AsNumber());
+        }
+
+        [Test]
+        public void RestParam_Empty()
+        {
+            // Rest parameter with no extra args gives empty array
+            Assert.AreEqual(0, _vm.Run("func f(...args) { return len(args) }\nreturn f()").AsNumber());
+        }
+
+        [Test]
+        public void RestParam_WithRegularParams()
+        {
+            // Rest parameter after regular params
+            var result = _vm.Run(@"
+func greet(greeting, ...names) {
+    var result = greeting
+    for name in names {
+        result = result + "" "" + name
+    }
+    return result
+}
+return greet(""Hello"", ""Alice"", ""Bob"")
+").AsString();
+            Assert.AreEqual("Hello Alice Bob", result);
+        }
+
+        [Test]
+        public void RestParam_Sum()
+        {
+            // Sum all rest args
+            Assert.AreEqual(15, _vm.Run(@"
+func sum(...nums) {
+    var total = 0
+    for n in nums { total += n }
+    return total
+}
+return sum(1, 2, 3, 4, 5)
+").AsNumber());
+        }
+
+        [Test]
+        public void RestParam_Lambda()
+        {
+            // Rest parameter in lambda
+            Assert.AreEqual(6, _vm.Run(@"
+var sum = (...args) => {
+    var total = 0
+    for a in args { total += a }
+    return total
+}
+return sum(1, 2, 3)
+").AsNumber());
+        }
+
+        [Test]
+        public void RestParam_WithDefaults()
+        {
+            // Combine default params with rest param
+            Assert.AreEqual("Hi: 1,2,3", _vm.Run(@"
+func f(prefix = ""Hi"", ...nums) {
+    return prefix + "": "" + join(nums, "","")
+}
+return f(""Hi"", 1, 2, 3)
+").AsString());
         }
     }
 

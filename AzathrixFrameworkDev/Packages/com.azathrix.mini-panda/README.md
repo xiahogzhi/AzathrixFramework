@@ -63,6 +63,34 @@ x++      // 后置自增
 x--      // 后置自减
 ```
 
+### 字符串
+
+```javascript
+var name = "World"
+var greeting = "Hello {name}!"  // 字符串插值
+print(greeting)  // Hello World!
+
+// 表达式插值
+print("Result: {10 + 5}")  // Result: 15
+
+// 转义大括号
+print("\{literal}")  // {literal}
+```
+
+### 运算符
+
+```javascript
+// 三元运算符
+var result = x > 0 ? "positive" : "negative"
+
+// 空值合并
+var value = null ?? "default"  // "default"
+var name = userName ?? "Guest"  // 如果 userName 为 null，使用 "Guest"
+
+// 链式空值合并
+var x = a ?? b ?? c ?? "fallback"
+```
+
 ### 数组与对象
 
 ```javascript
@@ -87,9 +115,6 @@ if x > 0 {
 } else {
     print("negative")
 }
-
-// 三元运算符
-var result = x > 0 ? "positive" : "negative"
 
 // 循环
 while x > 0 {
@@ -116,8 +141,16 @@ func add(a, b) {
 // 单行函数
 func double(x) return x * 2
 
+// 默认参数
+func greet(name, greeting = "Hello") {
+    return greeting + ", " + name
+}
+greet("World")           // "Hello, World"
+greet("World", "Hi")     // "Hi, World"
+
 // Lambda
 var triple = (x) => x * 3
+var add = (a, b = 10) => a + b  // Lambda 也支持默认参数
 ```
 
 ### 类
@@ -249,6 +282,12 @@ vm.RunFile("scripts/main.panda");
 | `max(...)` | 最大值 |
 | `push(arr, val)` | 向数组末尾添加元素 |
 | `pop(arr)` | 移除并返回数组末尾元素 |
+| `keys(obj)` | 返回对象所有键的数组 |
+| `values(obj)` | 返回对象所有值的数组 |
+| `contains(col, item)` | 检查数组/对象/字符串是否包含元素 |
+| `slice(arr/str, start, end)` | 切片，支持负索引 |
+| `join(arr, sep)` | 数组连接成字符串 |
+| `split(str, sep)` | 字符串分割成数组 |
 | `_G` | 全局表，可读写全局变量 |
 
 ### JSON

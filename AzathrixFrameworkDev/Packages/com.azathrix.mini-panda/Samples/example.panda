@@ -6,20 +6,16 @@ var name = "MiniPanda"
 var version = 1.0
 var isReady = true
 
-log(vaersion.toString())
-
-log("欢迎使用 " + name + " v" + version)
+print("欢迎使用 " + name + " v" + version)
 
 // ========== 数组 ==========
 var fruits = ["苹果", "香蕉", "橙子"]
 fruits[1] = "葡萄"
 
-log("水果列表:")
+print("水果列表:")
 for fruit in fruits {
-    log("  - " + fruit)
+    print("  - " + fruit)
 }
-
-fruit()
 
 // ========== 对象 ==========
 var config = {
@@ -28,7 +24,7 @@ var config = {
     volume: 0.8
 }
 
-log("配置: debug=" + config.debug + ", maxFps=" + config.maxFps)
+print("配置: debug=" + config.debug + ", maxFps=" + config.maxFps)
 
 // ========== 函数 ==========
 func greet(name) {
@@ -40,15 +36,15 @@ func fibonacci(n) {
     return fibonacci(n - 1) + fibonacci(n - 2)
 }
 
-log(greet("世界"))
-log("斐波那契(10) = " + fibonacci(10))
+print(greet("世界"))
+print("斐波那契(10) = " + fibonacci(10))
 
 // ========== Lambda ==========
 var square = (x) => x * x
 var cube = (x) => x * x * x
 
-log("5 的平方 = " + square(5))
-log("3 的立方 = " + cube(3))
+print("5 的平方 = " + square(5))
+print("3 的立方 = " + cube(3))
 
 // ========== 类 ==========
 class Entity {
@@ -62,7 +58,7 @@ class Entity {
         if this.hp < 0 {
             this.hp = 0
         }
-        log(this.name + " 受到 " + amount + " 点伤害, 剩余 HP: " + this.hp)
+        print(this.name + " 受到 " + amount + " 点伤害, 剩余 HP: " + this.hp)
     }
 
     func isAlive() {
@@ -80,12 +76,12 @@ class Player : Entity {
     func levelUp() {
         this.level = this.level + 1
         this.hp = this.hp + 10
-        log(this.name + " 升级到 " + this.level + " 级!")
+        print(this.name + " 升级到 " + this.level + " 级!")
     }
 }
 
 var hero = Player("勇者", 1)
-log("创建玩家: " + hero.name + ", 等级: " + hero.level + ", HP: " + hero.hp)
+print("创建玩家: " + hero.name + ", 等级: " + hero.level + ", HP: " + hero.hp)
 
 hero.takeDamage(30)
 hero.levelUp()
@@ -94,9 +90,9 @@ hero.takeDamage(50)
 
 
 if hero.isAlive() {
-    log(hero.name + " 还活着!")
+    print(hero.name + " 还活着!")
 } else {
-    log(hero.name + " 已阵亡...")
+    print(hero.name + " 已阵亡...")
 }
 
 // ========== 控制流 ==========
@@ -105,12 +101,36 @@ for i in range(10) {
     if i % 2 == 0 continue
     sum = sum + i
 }
-log("1-9 奇数和 = " + sum)
+print("1-9 奇数和 = " + sum)
 
 var count = 0
 while count < 5 {
-    log("计数: " + count)
+    print("计数: " + count)
     count = count + 1
 }
 
-log("示例运行完成!")
+print("示例运行完成!")
+
+// ========== 模块导入 (Import) ==========
+// 注意: 需要先用 LoadModule 预加载模块文件
+
+// 基本导入 - 文件作用域
+import "utils" as u
+print("Utils VERSION: " + u.VERSION)
+u.helper()
+print("clamp(15, 0, 10) = " + u.clamp(15, 0, 10))
+print("lerp(0, 100, 0.5) = " + u.lerp(0, 100, 0.5))
+
+// 路径转换 - 点号转目录
+import "math.vector" as vec
+var v1 = vec.create(1, 2, 3)
+var v2 = vec.create(4, 5, 6)
+print("v1 = (" + v1.x + ", " + v1.y + ", " + v1.z + ")")
+
+var v3 = vec.add(v1, v2)
+print("v1 + v2 = (" + v3.x + ", " + v3.y + ", " + v3.z + ")")
+
+print("dot(v1, v2) = " + vec.dot(v1, v2))
+print("length(v1) = " + vec.length(v1))
+
+

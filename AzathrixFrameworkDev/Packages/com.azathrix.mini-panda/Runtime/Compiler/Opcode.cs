@@ -27,6 +27,14 @@ namespace Azathrix.MiniPanda.Compiler
         Mod,
         Neg,            // Unary minus
 
+        // Bitwise
+        BitAnd,
+        BitOr,
+        BitXor,
+        BitNot,
+        Shl,            // <<
+        Shr,            // >>
+
         // Comparison
         Eq,
         Ne,
@@ -44,6 +52,7 @@ namespace Azathrix.MiniPanda.Compiler
         Jump,           // Unconditional jump
         JumpIfFalse,    // Jump if top of stack is false
         JumpIfTrue,     // Jump if top of stack is true
+        JumpIfNotNull,  // Jump if top of stack is not null (for ??)
         Loop,           // Jump backward
 
         // Functions
@@ -76,7 +85,8 @@ namespace Azathrix.MiniPanda.Compiler
 
         // Iterator
         GetIter,        // Get iterator from iterable
-        ForIter,        // Advance iterator, jump if done
+        ForIter,        // Advance iterator, jump if done (pushes value)
+        ForIterKV,      // Advance iterator, jump if done (pushes key, value)
 
         // Upvalues
         GetUpvalue,     // Get captured variable
@@ -91,5 +101,11 @@ namespace Azathrix.MiniPanda.Compiler
 
         // Root globals (for global keyword)
         DefineRootGlobal, // Define variable in root globals
+
+        // Exception handling
+        SetupTry,       // Setup try block (catch offset, finally offset, catch var slot)
+        Throw,          // Throw exception
+        EndTry,         // End try block (pop handler)
+        EndFinally,     // End finally block (rethrow if needed)
     }
 }

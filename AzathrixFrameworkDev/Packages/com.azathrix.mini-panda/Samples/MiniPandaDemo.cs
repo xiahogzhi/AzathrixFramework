@@ -34,7 +34,7 @@ public class MiniPandaDemo : MonoBehaviour
 
     void RegisterUnityFunctions()
     {
-        // _panda.SetGlobal("print", NativeFunc.CreateWithVM((vm, args) =>
+        // _panda.SetGlobal("print", NativeFunction.CreateWithVM((vm, args) =>
         // {
         //     var msg = args.Length > 0 ? args[0].AsString() : "";
         //     var location = vm.GetCurrentLocation();
@@ -42,9 +42,9 @@ public class MiniPandaDemo : MonoBehaviour
         //     return Value.Null;
         // }));
         //
-        // _panda.SetGlobal("time", NativeFunc.Create(() => Value.FromNumber(Time.time)));
+        // _panda.SetGlobal("time", NativeFunction.Create(() => Value.FromNumber(Time.time)));
         //
-        // _panda.SetGlobal("deltaTime", NativeFunc.Create(() => Value.FromNumber(Time.deltaTime)));
+        // _panda.SetGlobal("deltaTime", NativeFunction.Create(() => Value.FromNumber(Time.deltaTime)));
     }
 
     void BasicExample()

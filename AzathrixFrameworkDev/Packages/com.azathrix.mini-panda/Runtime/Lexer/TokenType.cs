@@ -35,6 +35,17 @@ namespace Azathrix.MiniPanda.Lexer
         Or,             // ||
         Arrow,          // =>
         Question,       // ?
+        QuestionQuestion, // ??
+        QuestionDot,    // ?.
+        QuestionBracket, // ?[
+
+        // Bitwise operators
+        BitAnd,         // &
+        BitOr,          // |
+        BitXor,         // ^
+        BitNot,         // ~
+        LeftShift,      // <<
+        RightShift,     // >>
 
         // Delimiters
         LeftParen,      // (
@@ -45,6 +56,7 @@ namespace Azathrix.MiniPanda.Lexer
         RightBracket,   // ]
         Comma,          // ,
         Dot,            // .
+        DotDotDot,      // ...
         Colon,          // :
         Semicolon,      // ;
 
@@ -65,6 +77,11 @@ namespace Azathrix.MiniPanda.Lexer
         Global,
         This,
         Super,
+        Try,
+        Catch,
+        Finally,
+        Throw,
+        Enum,
 
         // Special
         Newline,

@@ -24,6 +24,8 @@ namespace Azathrix.MiniPanda.Parser
     {
         public string Name;
         public List<string> Parameters;
+        public List<Expr> Defaults;  // Default values for parameters (null if no default)
+        public string RestParam;     // Rest parameter name (null if none)
         public List<Stmt> Body;
         public bool IsGlobal;
     }
@@ -52,7 +54,8 @@ namespace Azathrix.MiniPanda.Parser
 
     public class ForStmt : Stmt
     {
-        public string Variable;
+        public string Variable;      // Value variable (or single variable)
+        public string KeyVariable;   // Key variable for "for k, v in dict" (null if not used)
         public Expr Iterable;
         public List<Stmt> Body;
     }
@@ -65,6 +68,19 @@ namespace Azathrix.MiniPanda.Parser
     public class BreakStmt : Stmt { }
     public class ContinueStmt : Stmt { }
 
+    public class TryStmt : Stmt
+    {
+        public List<Stmt> TryBlock;
+        public string CatchVar;        // Variable name for caught exception (null if no catch)
+        public List<Stmt> CatchBlock;  // null if no catch
+        public List<Stmt> FinallyBlock; // null if no finally
+    }
+
+    public class ThrowStmt : Stmt
+    {
+        public Expr Value;
+    }
+
     public class ImportStmt : Stmt
     {
         public string Path;
@@ -75,6 +91,13 @@ namespace Azathrix.MiniPanda.Parser
     public class BlockStmt : Stmt
     {
         public List<Stmt> Statements;
+    }
+
+    public class EnumDecl : Stmt
+    {
+        public string Name;
+        public List<(string Name, Expr Value)> Members;
+        public bool IsGlobal;
     }
 
     // Expressions
@@ -140,6 +163,7 @@ namespace Azathrix.MiniPanda.Parser
     {
         public Expr Object;
         public string Name;
+        public bool IsOptional;  // for ?.
     }
 
     public class SetExpr : Expr
@@ -153,6 +177,7 @@ namespace Azathrix.MiniPanda.Parser
     {
         public Expr Object;
         public Expr Index;
+        public bool IsOptional;  // for ?[
     }
 
     public class IndexSetExpr : Expr
@@ -175,6 +200,8 @@ namespace Azathrix.MiniPanda.Parser
     public class LambdaExpr : Expr
     {
         public List<string> Parameters;
+        public List<Expr> Defaults;  // Default values for parameters
+        public string RestParam;     // Rest parameter name (null if none)
         public Expr Body;        // for single expression: (x) => x * 2
         public List<Stmt> Block; // for block: (x) => { return x * 2; }
     }
@@ -190,5 +217,11 @@ namespace Azathrix.MiniPanda.Parser
         public Expr Condition;
         public Expr ThenExpr;
         public Expr ElseExpr;
+    }
+
+    public class NullCoalesceExpr : Expr
+    {
+        public Expr Left;
+        public Expr Right;
     }
 }

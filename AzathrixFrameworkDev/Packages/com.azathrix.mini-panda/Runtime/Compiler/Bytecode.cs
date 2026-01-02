@@ -222,6 +222,7 @@ namespace Azathrix.MiniPanda.Compiler
         public string Name { get; set; }
         public string ClassName { get; set; }
         public int Arity { get; set; }
+        public string RestParam { get; set; }  // Rest parameter name (null if none)
         public Bytecode Code { get; set; }
         public int UpvalueCount { get; set; }
 
