@@ -1,0 +1,20 @@
+{
+    "name": "Azathrix.GameKit.Editor",
+    "rootNamespace": "Azathrix.GameKit",
+    "references": [
+        "UniTask",
+        "Azathrix.Framework.Runtime",
+        "Azathrix.GameKit.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

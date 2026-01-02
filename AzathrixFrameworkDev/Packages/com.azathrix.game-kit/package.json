@@ -1,0 +1,15 @@
+{
+  "name": "com.azathrix.game-kit",
+  "displayName": "Game Kit",
+  "version": "0.0.1",
+  "unity": "6000.3",
+  "description": "提供游戏一些基础工具api和脚本",
+  "author": {
+    "name": "InputName"
+  },
+  "dependencies": {
+    "com.azathrix.framework": "0.0.3",
+    "com.azathrix.unitask": "2.5.10"
+  },
+  "_fingerprint": "b8f8a0f33f64a415da40cfd5c1fc71bb843a66c2"
+}

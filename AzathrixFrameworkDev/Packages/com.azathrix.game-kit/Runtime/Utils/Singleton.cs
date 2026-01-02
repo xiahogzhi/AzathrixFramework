@@ -1,4 +1,4 @@
-﻿namespace Azathrix.Framework.Tools
+﻿namespace Azathrix.GameKit.Runtime.Utils
 {
     /// <summary>
     /// 泛型单例基类，提供线程安全的单例实现
