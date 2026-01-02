@@ -83,7 +83,9 @@ namespace Azathrix.MiniPanda.Lexer
                 case '*':
                     AddToken(Match('=') ? TokenType.StarEqual : TokenType.Star);
                     break;
-                case '%': AddToken(TokenType.Percent); break;
+                case '%':
+                    AddToken(Match('=') ? TokenType.PercentEqual : TokenType.Percent);
+                    break;
 
                 case '!': AddToken(Match('=') ? TokenType.BangEqual : TokenType.Bang); break;
                 case '=':

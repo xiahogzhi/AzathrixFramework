@@ -316,7 +316,7 @@ namespace Azathrix.MiniPanda.Parser
                 throw Error("Invalid assignment target");
             }
 
-            if (Match(TokenType.PlusEqual, TokenType.MinusEqual, TokenType.StarEqual, TokenType.SlashEqual))
+            if (Match(TokenType.PlusEqual, TokenType.MinusEqual, TokenType.StarEqual, TokenType.SlashEqual, TokenType.PercentEqual))
             {
                 var op = Previous().Type;
                 var binaryOp = op switch
@@ -325,6 +325,7 @@ namespace Azathrix.MiniPanda.Parser
                     TokenType.MinusEqual => TokenType.Minus,
                     TokenType.StarEqual => TokenType.Star,
                     TokenType.SlashEqual => TokenType.Slash,
+                    TokenType.PercentEqual => TokenType.Percent,
                     _ => TokenType.Plus
                 };
                 var value = Assignment();

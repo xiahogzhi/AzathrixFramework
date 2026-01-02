@@ -23,6 +23,7 @@ namespace Azathrix.MiniPanda.Lexer
         SlashEqual,     // /=
         PlusPlus,       // ++
         MinusMinus,     // --
+        PercentEqual,   // %=
         EqualEqual,     // ==
         BangEqual,      // !=
         Less,           // <

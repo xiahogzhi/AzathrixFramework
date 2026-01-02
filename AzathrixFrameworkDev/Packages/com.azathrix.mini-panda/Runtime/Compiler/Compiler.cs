@@ -620,6 +620,7 @@ namespace Azathrix.MiniPanda.Compiler
                 case TokenType.Minus: Emit(Opcode.Sub, line); break;
                 case TokenType.Star: Emit(Opcode.Mul, line); break;
                 case TokenType.Slash: Emit(Opcode.Div, line); break;
+                case TokenType.Percent: Emit(Opcode.Mod, line); break;
                 default: throw new CompilerException($"Unsupported operator: {op}");
             }
         }

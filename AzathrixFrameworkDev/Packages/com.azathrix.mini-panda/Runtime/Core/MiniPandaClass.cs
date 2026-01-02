@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Azathrix.MiniPanda.Compiler;
-using Azathrix.MiniPanda.GC;
 using Azathrix.MiniPanda.VM;
 
 namespace Azathrix.MiniPanda.Core

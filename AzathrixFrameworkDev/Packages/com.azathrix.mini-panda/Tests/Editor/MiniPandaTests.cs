@@ -180,6 +180,7 @@ namespace Azathrix.MiniPanda.Tests
             Assert.AreEqual(12.0, _vm.Run("var y = 20; y -= 8; return y").AsNumber());
             Assert.AreEqual(18.0, _vm.Run("var z = 6; z *= 3; return z").AsNumber());
             Assert.AreEqual(25.0, _vm.Run("var w = 100; w /= 4; return w").AsNumber());
+            Assert.AreEqual(1.0, _vm.Run("var m = 10; m %= 3; return m").AsNumber());
         }
 
         [Test]
@@ -556,6 +557,23 @@ namespace Azathrix.MiniPanda.Tests
         {
             var result = _vm.Eval("x + y", new { x = 10, y = 20 });
             Assert.AreEqual(30.0, result.AsNumber());
+        }
+
+        [Test]
+        public void Call_WithScope()
+        {
+            _vm.Run("global func greet(name) { return prefix + name + suffix }");
+            var result = _vm.Call(new { prefix = "Hello, ", suffix = "!" }, "greet", "World");
+            Assert.AreEqual("Hello, World!", result.AsString());
+        }
+
+        [Test]
+        public void Call_WithScope_Dictionary()
+        {
+            _vm.Run("global func calculate() { return a * b + c }");
+            var scope = new Dictionary<string, object> { ["a"] = 2, ["b"] = 3, ["c"] = 4 };
+            var result = _vm.Call(scope, "calculate");
+            Assert.AreEqual(10.0, result.AsNumber());
         }
 
         // ========== Scope Tests ==========
@@ -1234,6 +1252,64 @@ namespace Azathrix.MiniPanda.Tests
         public void Builtin_Pop()
         {
             Assert.AreEqual(3.0, _vm.Run("var arr = [1, 2, 3]; return pop(arr)").AsNumber());
+        }
+
+        [Test]
+        public void Builtin_JSON_Parse()
+        {
+            // Parse object
+            var obj = _vm.Run("return JSON.parse(\"\\{\\\"name\\\":\\\"test\\\",\\\"value\\\":42\\}\")").As<MiniPandaObject>();
+            Assert.AreEqual("test", obj.Get("name").AsString());
+            Assert.AreEqual(42.0, obj.Get("value").AsNumber());
+
+            // Parse array
+            var arr = _vm.Run("return JSON.parse(\"[1,2,3]\")").As<MiniPandaArray>();
+            Assert.AreEqual(3, arr.Length);
+            Assert.AreEqual(2.0, arr.Get(1).AsNumber());
+
+            // Parse primitives
+            Assert.AreEqual(42.0, _vm.Run("return JSON.parse(\"42\")").AsNumber());
+            Assert.AreEqual(true, _vm.Run("return JSON.parse(\"true\")").AsBool());
+            Assert.IsTrue(_vm.Run("return JSON.parse(\"null\")").IsNull);
+        }
+
+        [Test]
+        public void Builtin_JSON_Stringify()
+        {
+            Assert.AreEqual("{\"name\":\"test\",\"value\":42}", _vm.Run("return JSON.stringify({name: \"test\", value: 42})").AsString());
+            Assert.AreEqual("[1,2,3]", _vm.Run("return JSON.stringify([1, 2, 3])").AsString());
+            Assert.AreEqual("42", _vm.Run("return JSON.stringify(42)").AsString());
+            Assert.AreEqual("true", _vm.Run("return JSON.stringify(true)").AsString());
+            Assert.AreEqual("null", _vm.Run("return JSON.stringify(null)").AsString());
+        }
+
+        [Test]
+        public void Builtin_Assert_Pass()
+        {
+            // Should not throw
+            _vm.Run("assert(true)");
+            _vm.Run("assert(1 == 1)");
+            _vm.Run("assert(5 > 3, \"5 should be greater than 3\")");
+        }
+
+        [Test]
+        public void Builtin_Assert_Fail()
+        {
+            Assert.Throws<MiniPandaRuntimeException>(() => _vm.Run("assert(false)"));
+            Assert.Throws<MiniPandaRuntimeException>(() => _vm.Run("assert(1 == 2, \"Numbers should be equal\")"));
+        }
+
+        [Test]
+        public void Builtin_Stacktrace()
+        {
+            var result = _vm.Run(@"
+                func inner() { return stacktrace() }
+                func outer() { return inner() }
+                return outer()
+            ");
+            var trace = result.AsString();
+            Assert.IsTrue(trace.Contains("inner"));
+            Assert.IsTrue(trace.Contains("outer"));
         }
     }
 

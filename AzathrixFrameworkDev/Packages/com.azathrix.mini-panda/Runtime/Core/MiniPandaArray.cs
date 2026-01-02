@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Azathrix.MiniPanda.GC;
 
 namespace Azathrix.MiniPanda.Core
 {

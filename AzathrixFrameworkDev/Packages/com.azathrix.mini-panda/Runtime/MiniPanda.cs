@@ -69,6 +69,7 @@ namespace Azathrix.MiniPanda
 
         // Function calls
         public Value Call(string funcName, params object[] args) => _vm.Call(funcName, args);
+        public Value Call(object scope, string funcName, params object[] args) => _vm.Call(scope, funcName, args);
 
         // Scope management
         public Environment GetScope(string name) => _vm.GetScope(name);

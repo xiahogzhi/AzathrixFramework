@@ -192,6 +192,36 @@ namespace Azathrix.MiniPanda.VM
             throw new MiniPandaRuntimeException($"'{funcName}' is not a function");
         }
 
+        public Value Call(object scope, string funcName, params object[] args)
+        {
+            var func = _globalScope.Get(funcName);
+            if (func.As<MiniPandaFunction>() is { } function)
+            {
+                // Create scoped function with temporary environment
+                var scopedEnv = function.Closure.CreateChild();
+                if (scope is Environment e)
+                {
+                    foreach (var kvp in e.GetAll())
+                        scopedEnv.Define(kvp.Key, kvp.Value);
+                }
+                else if (scope is Dictionary<string, object> dict)
+                {
+                    scopedEnv.With(dict);
+                }
+                else if (scope != null)
+                {
+                    scopedEnv.With(scope);
+                }
+
+                var scopedFunc = new MiniPandaFunction(function.Prototype, scopedEnv);
+                var values = new Value[args.Length];
+                for (int i = 0; i < args.Length; i++)
+                    values[i] = ConvertToValue(args[i]);
+                return CallFunction(scopedFunc, values);
+            }
+            throw new MiniPandaRuntimeException($"'{funcName}' is not a function");
+        }
+
         public static bool IsBytecode(byte[] data)
         {
             return data != null && data.Length >= 4 &&
@@ -491,7 +521,6 @@ namespace Azathrix.MiniPanda.VM
                 throw new MiniPandaRuntimeException(ex.Message, GetPandaStackTrace());
             }
 
-            return Value.Null;
         }
 
         public List<Exceptions.StackFrame> GetStackTrace() => GetPandaStackTrace();
@@ -1039,6 +1068,32 @@ namespace Azathrix.MiniPanda.VM
                                     throw new MiniPandaRuntimeException($"'{name}' is not callable in global scope");
                                 }
                             }
+                            else if (receiver.As<MiniPandaObject>() is { } obj)
+                            {
+                                var member = obj.Get(name);
+                                if (member.As<NativeFunction>() is { } native)
+                                {
+                                    var args = new Value[argCount];
+                                    for (int i = argCount - 1; i >= 0; i--)
+                                        args[i] = Pop();
+                                    Pop(); // Pop object
+                                    var result = native.Call(this, args);
+                                    Push(result);
+                                }
+                                else if (member.AsCallable() is { } callable)
+                                {
+                                    _stack[_stackTop - argCount - 1] = member;
+                                    if (!CallValue(member, argCount))
+                                    {
+                                        throw new MiniPandaRuntimeException($"Cannot call '{name}'");
+                                    }
+                                    frame = ref _frames[_frameCount - 1];
+                                }
+                                else
+                                {
+                                    throw new MiniPandaRuntimeException($"'{name}' is not callable on object");
+                                }
+                            }
                             else
                             {
                                 var typeName = receiver.AsObject()?.GetType().Name ?? receiver.Type.ToString();
@@ -1396,7 +1451,7 @@ namespace Azathrix.MiniPanda.VM
         }
     }
 
-    internal class ArrayIterator : GC.MiniPandaHeapObject
+    internal class ArrayIterator : MiniPandaHeapObject
     {
         private readonly MiniPandaArray _array;
         private int _index;

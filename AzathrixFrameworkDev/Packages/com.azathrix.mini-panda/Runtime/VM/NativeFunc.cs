@@ -1,6 +1,5 @@
 using System;
 using Azathrix.MiniPanda.Core;
-using Azathrix.MiniPanda.GC;
 
 namespace Azathrix.MiniPanda.VM
 {

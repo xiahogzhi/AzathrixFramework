@@ -48,6 +48,19 @@ var x = 10
 var name = "hello"
 var flag = true
 var empty = null
+
+// 复合赋值
+x += 5   // x = x + 5
+x -= 3   // x = x - 3
+x *= 2   // x = x * 2
+x /= 4   // x = x / 4
+x %= 3   // x = x % 3
+
+// 自增自减
+++x      // 前置自增
+x++      // 后置自增
+--x      // 前置自减
+x--      // 后置自减
 ```
 
 ### 数组与对象
@@ -74,6 +87,9 @@ if x > 0 {
 } else {
     print("negative")
 }
+
+// 三元运算符
+var result = x > 0 ? "positive" : "negative"
 
 // 循环
 while x > 0 {
@@ -182,6 +198,11 @@ var name = vm.GetGlobal("name").AsString();
 ```csharp
 vm.Run("func multiply(a, b) return a * b");
 var result = vm.Call("multiply", 6, 7);  // 42
+
+// 带临时作用域调用
+vm.Run("func greet(name) { return prefix + name + suffix }");
+var result = vm.Call(new { prefix = "Hello, ", suffix = "!" }, "greet", "World");
+// result = "Hello, World!"
 ```
 
 ### 带临时环境求值
@@ -226,7 +247,40 @@ vm.RunFile("scripts/main.panda");
 | `pow(a, b)` | a 的 b 次方 |
 | `min(...)` | 最小值 |
 | `max(...)` | 最大值 |
+| `push(arr, val)` | 向数组末尾添加元素 |
+| `pop(arr)` | 移除并返回数组末尾元素 |
 | `_G` | 全局表，可读写全局变量 |
+
+### JSON
+
+```javascript
+// 解析 JSON 字符串
+var obj = JSON.parse("{\"name\":\"test\",\"value\":42}")
+print(obj.name)  // test
+
+// 转换为 JSON 字符串
+var json = JSON.stringify({name: "test", value: 42})
+print(json)  // {"name":"test","value":42}
+```
+
+### 调试函数
+
+```javascript
+// trace - 打印值并显示位置信息
+trace("debug info")  // [TRACE] debug info (at script.panda:10)
+
+// debug - 同 trace
+debug("message")
+
+// stacktrace - 返回调用栈字符串
+func inner() { return stacktrace() }
+func outer() { return inner() }
+print(outer())
+
+// assert - 断言，条件为 false 时抛出错误
+assert(x > 0)
+assert(x > 0, "x must be positive")
+```
 
 ## 编译缓存
 
