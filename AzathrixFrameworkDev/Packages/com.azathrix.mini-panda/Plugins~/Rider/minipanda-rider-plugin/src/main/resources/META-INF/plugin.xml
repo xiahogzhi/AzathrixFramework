@@ -1,0 +1,51 @@
+<idea-plugin>
+    <id>com.azathrix.minipanda</id>
+    <name>MiniPanda Language</name>
+    <vendor email="support@azathrix.com" url="https://github.com/azathrix">Azathrix</vendor>
+
+    <description><![CDATA[
+    MiniPanda 脚本语言支持。
+    <br><br>
+    功能:
+    <ul>
+        <li>语法高亮</li>
+        <li>代码折叠</li>
+        <li>括号匹配</li>
+        <li>注释支持</li>
+    </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType
+            name="MiniPanda"
+            implementationClass="com.azathrix.minipanda.MiniPandaFileType"
+            fieldName="INSTANCE"
+            language="MiniPanda"
+            extensions="panda"/>
+
+        <lang.parserDefinition
+            language="MiniPanda"
+            implementationClass="com.azathrix.minipanda.MiniPandaParserDefinition"/>
+
+        <lang.syntaxHighlighterFactory
+            language="MiniPanda"
+            implementationClass="com.azathrix.minipanda.MiniPandaSyntaxHighlighterFactory"/>
+
+        <lang.braceMatcher
+            language="MiniPanda"
+            implementationClass="com.azathrix.minipanda.MiniPandaBraceMatcher"/>
+
+        <lang.commenter
+            language="MiniPanda"
+            implementationClass="com.azathrix.minipanda.MiniPandaCommenter"/>
+
+        <lang.foldingBuilder
+            language="MiniPanda"
+            implementationClass="com.azathrix.minipanda.MiniPandaFoldingBuilder"/>
+
+        <colorSettingsPage
+            implementation="com.azathrix.minipanda.MiniPandaColorSettingsPage"/>
+    </extensions>
+</idea-plugin>

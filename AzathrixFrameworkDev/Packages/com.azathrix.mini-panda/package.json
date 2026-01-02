@@ -1,0 +1,15 @@
+﻿{
+    "name": "com.azathrix.mini-panda",
+    "displayName": "Mini Panda",
+    "version": "1.0.0",
+    "unity": "6000.3",
+    "description": "一个小型解释型语言",
+    "author": {
+        "name": "InputName"
+    },
+    "dependencies": {
+    },
+    "testables": [
+        "com.azathrix.mini-panda"
+    ]
+}

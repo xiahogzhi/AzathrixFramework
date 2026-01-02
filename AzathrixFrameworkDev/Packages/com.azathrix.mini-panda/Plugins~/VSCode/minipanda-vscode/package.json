@@ -1,0 +1,39 @@
+{
+  "name": "minipanda",
+  "displayName": "MiniPanda",
+  "description": "MiniPanda scripting language support",
+  "version": "1.0.0",
+  "publisher": "InputName",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "icon": "icons/panda.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azathrix/minipanda"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "minipanda",
+        "aliases": ["MiniPanda", "minipanda", "panda"],
+        "extensions": [".panda"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/panda.png",
+          "dark": "./icons/panda.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "minipanda",
+        "scopeName": "source.panda",
+        "path": "./syntaxes/minipanda.tmLanguage.json"
+      }
+    ]
+  }
+}

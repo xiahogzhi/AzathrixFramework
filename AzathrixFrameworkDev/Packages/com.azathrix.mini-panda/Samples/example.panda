@@ -1,0 +1,116 @@
+// MiniPanda 示例脚本
+// 这是一个展示 MiniPanda 语法的示例文件
+
+// ========== 变量 ==========
+var name = "MiniPanda"
+var version = 1.0
+var isReady = true
+
+log(vaersion.toString())
+
+log("欢迎使用 " + name + " v" + version)
+
+// ========== 数组 ==========
+var fruits = ["苹果", "香蕉", "橙子"]
+fruits[1] = "葡萄"
+
+log("水果列表:")
+for fruit in fruits {
+    log("  - " + fruit)
+}
+
+fruit()
+
+// ========== 对象 ==========
+var config = {
+    debug: true,
+    maxFps: 60,
+    volume: 0.8
+}
+
+log("配置: debug=" + config.debug + ", maxFps=" + config.maxFps)
+
+// ========== 函数 ==========
+func greet(name) {
+    return "你好, " + name + "!"
+}
+
+func fibonacci(n) {
+    if n <= 1 return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+}
+
+log(greet("世界"))
+log("斐波那契(10) = " + fibonacci(10))
+
+// ========== Lambda ==========
+var square = (x) => x * x
+var cube = (x) => x * x * x
+
+log("5 的平方 = " + square(5))
+log("3 的立方 = " + cube(3))
+
+// ========== 类 ==========
+class Entity {
+    Entity(name) {
+        this.name = name
+        this.hp = 100
+    }
+
+    func takeDamage(amount) {
+        this.hp = this.hp - amount
+        if this.hp < 0 {
+            this.hp = 0
+        }
+        log(this.name + " 受到 " + amount + " 点伤害, 剩余 HP: " + this.hp)
+    }
+
+    func isAlive() {
+        return this.hp > 0
+    }
+}
+
+class Player : Entity {
+    Player(name, level) {
+        super.Entity(name)
+        this.level = level
+        this.hp = 100 + level * 10
+    }
+
+    func levelUp() {
+        this.level = this.level + 1
+        this.hp = this.hp + 10
+        log(this.name + " 升级到 " + this.level + " 级!")
+    }
+}
+
+var hero = Player("勇者", 1)
+log("创建玩家: " + hero.name + ", 等级: " + hero.level + ", HP: " + hero.hp)
+
+hero.takeDamage(30)
+hero.levelUp()
+hero.takeDamage(50)
+
+
+
+if hero.isAlive() {
+    log(hero.name + " 还活着!")
+} else {
+    log(hero.name + " 已阵亡...")
+}
+
+// ========== 控制流 ==========
+var sum = 0
+for i in range(10) {
+    if i % 2 == 0 continue
+    sum = sum + i
+}
+log("1-9 奇数和 = " + sum)
+
+var count = 0
+while count < 5 {
+    log("计数: " + count)
+    count = count + 1
+}
+
+log("示例运行完成!")

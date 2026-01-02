@@ -1,0 +1,162 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MiniPanda",
+  "scopeName": "source.panda",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#operators" },
+    { "include": "#functions" },
+    { "include": "#classes" },
+    { "include": "#variables" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.panda",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.panda",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.panda",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.panda",
+              "match": "\\\\."
+            },
+            {
+              "name": "variable.other.interpolation.panda",
+              "begin": "\\{",
+              "end": "\\}"
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.panda",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.panda",
+          "match": "\\b(if|else|while|for|in|return|break|continue)\\b"
+        },
+        {
+          "name": "keyword.declaration.panda",
+          "match": "\\b(var|func|class)\\b"
+        },
+        {
+          "name": "keyword.other.panda",
+          "match": "\\b(import|as)\\b"
+        },
+        {
+          "name": "variable.language.this.panda",
+          "match": "\\b(this)\\b"
+        },
+        {
+          "name": "variable.language.super.panda",
+          "match": "\\b(super)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.panda",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.panda",
+          "match": "\\b(null)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.panda",
+          "match": "(==|!=|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.logical.panda",
+          "match": "(&&|\\|\\||!)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.panda",
+          "match": "(\\+|-|\\*|/|%)"
+        },
+        {
+          "name": "keyword.operator.assignment.panda",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.arrow.panda",
+          "match": "=>"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "meta.function.panda",
+          "match": "\\b(func)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+          "captures": {
+            "1": { "name": "keyword.declaration.function.panda" },
+            "2": { "name": "entity.name.function.panda" }
+          }
+        },
+        {
+          "name": "meta.function-call.panda",
+          "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.panda" }
+          }
+        }
+      ]
+    },
+    "classes": {
+      "patterns": [
+        {
+          "name": "meta.class.panda",
+          "match": "\\b(class)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.class.panda" },
+            "2": { "name": "entity.name.class.panda" }
+          }
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "meta.variable.panda",
+          "match": "\\b(var)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.variable.panda" },
+            "2": { "name": "variable.other.panda" }
+          }
+        }
+      ]
+    }
+  }
+}

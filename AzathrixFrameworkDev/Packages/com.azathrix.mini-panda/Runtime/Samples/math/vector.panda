@@ -1,0 +1,35 @@
+// math/vector.panda - 向量模块示例
+
+func create(x, y, z) {
+    return { x: x, y: y, z: z }
+}
+
+func add(v1, v2) {
+    return {
+        x: v1.x + v2.x,
+        y: v1.y + v2.y,
+        z: v1.z + v2.z
+    }
+}
+
+func scale(v, s) {
+    return {
+        x: v.x * s,
+        y: v.y * s,
+        z: v.z * s
+    }
+}
+
+func dot(v1, v2) {
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
+}
+
+func length(v) {
+    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+}
+
+func normalize(v) {
+    var len = length(v)
+    if len == 0 return create(0, 0, 0)
+    return scale(v, 1 / len)
+}
