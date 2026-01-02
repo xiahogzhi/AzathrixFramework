@@ -41,7 +41,7 @@ namespace Azathrix.Framework.Editor.Core
             serializedObject.Update();
 
             // 扫描配置
-            EditorGUILayout.LabelField("扫描配置", EditorStyles.boldLabel);
+            // EditorGUILayout.LabelField("扫描配置", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_scanMode, new GUIContent("扫描模式"));
             EditorGUILayout.PropertyField(_requireAutoRegister, new GUIContent("只扫描 [AutoRegister]"));
 
@@ -55,21 +55,21 @@ namespace Azathrix.Framework.Editor.Core
             EditorGUILayout.Space();
 
             // Runtime 配置
-            EditorGUILayout.LabelField("Runtime 配置", EditorStyles.boldLabel);
+            // EditorGUILayout.LabelField("Runtime 配置", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_enableProfiling, new GUIContent("启用性能统计"));
             EditorGUILayout.PropertyField(_symbols, new GUIContent("条件符号"), true);
 
             EditorGUILayout.Space();
 
             // 初始化配置
-            EditorGUILayout.LabelField("初始化配置", EditorStyles.boldLabel);
+            // EditorGUILayout.LabelField("初始化配置", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_autoInitialize, new GUIContent("自动初始化"));
             EditorGUILayout.PropertyField(_enableEditorSupport, new GUIContent("编辑器支持"));
 
             EditorGUILayout.Space();
 
             // 日志配置
-            EditorGUILayout.LabelField("日志配置", EditorStyles.boldLabel);
+            // EditorGUILayout.LabelField("日志配置", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(_systemInfoLevel, new GUIContent("系统信息级别"));
             EditorGUILayout.PropertyField(_debugEditorPipeline, new GUIContent("编辑器管线调试"));
 

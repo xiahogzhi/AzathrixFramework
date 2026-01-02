@@ -1,13 +1,13 @@
 using Azathrix.Framework.Interfaces;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Azathrix.Framework.Core
 {
     /// <summary>
     /// 默认资源加载器，基于 Unity Resources 系统实现
     /// </summary>
-
     public class DefaultResourcesLoader : IResourcesLoader
     {
         /// <summary>
@@ -32,6 +32,12 @@ namespace Azathrix.Framework.Core
         public T Load<T>(string key) where T : Object
         {
             return Resources.Load<T>(key);
+        }
+
+        public async UniTask LoadSceneAsync(string key, bool additive = false)
+        {
+            await SceneManager.LoadSceneAsync(key, additive ? LoadSceneMode.Additive : LoadSceneMode.Single)
+                .ToUniTask();
         }
     }
 }

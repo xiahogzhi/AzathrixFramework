@@ -65,12 +65,19 @@ namespace Azathrix.Framework.Core.Pipelines
                 var phaseName = phaseType.Name;
 
                 // 执行前置钩子
-                if (!await ExecuteBeforeHooksAsync(phase, context))
+                var hookResult = await ExecuteBeforeHooksAsync(phase, context);
+                if (hookResult == HookResult.Abort)
                 {
                     if (!SilentMode)
                         Log.Warning($"[Pipeline] 阶段 {phaseName} 被前置钩子中断");
                     context.Aborted = true;
                     break;
+                }
+                if (hookResult == HookResult.SkipPhase)
+                {
+                    if (!SilentMode)
+                        Log.Info($"[Pipeline] 阶段 {phaseName} 被前置钩子跳过");
+                    continue;
                 }
 
                 // 执行阶段
@@ -92,7 +99,7 @@ namespace Azathrix.Framework.Core.Pipelines
             }
         }
 
-        private async UniTask<bool> ExecuteBeforeHooksAsync(IPhase phase, PhaseContext context)
+        private async UniTask<HookResult> ExecuteBeforeHooksAsync(IPhase phase, PhaseContext context)
         {
             var phaseType = phase.GetType();
 
@@ -107,9 +114,10 @@ namespace Azathrix.Framework.Core.Pipelines
                     try
                     {
                         var method = hook.GetType().GetMethod("OnBeforeAsync");
-                        var task = (UniTask<bool>)method.Invoke(hook, new object[] { context });
-                        if (!await task)
-                            return false;
+                        var task = (UniTask<HookResult>)method.Invoke(hook, new object[] { context });
+                        var result = await task;
+                        if (result != HookResult.Continue)
+                            return result;
                     }
                     catch (Exception e)
                     {
@@ -118,7 +126,7 @@ namespace Azathrix.Framework.Core.Pipelines
                 }
             }
 
-            return true;
+            return HookResult.Continue;
         }
 
         private async UniTask ExecuteAfterHooksAsync(IPhase phase, PhaseContext context)
