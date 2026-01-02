@@ -72,6 +72,8 @@ namespace Azathrix.MiniPanda.Compiler
         Class,          // Define class
         Inherit,        // Set up inheritance
         Method,         // Define method
+        StaticMethod,   // Define static method
+        StaticField,    // Define static field
         GetProperty,    // Get property (with method binding)
         SetProperty,    // Set property
         GetSuper,       // Get super method

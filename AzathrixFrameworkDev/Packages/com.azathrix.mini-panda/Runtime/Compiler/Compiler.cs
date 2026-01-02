@@ -275,6 +275,12 @@ namespace Azathrix.MiniPanda.Compiler
         /// <summary>编译变量声明</summary>
         private void CompileVarDecl(VarDecl stmt)
         {
+            // 记录导出
+            if (stmt.IsExport && _scopeDepth == 0)
+            {
+                _bytecode.Exports.Add(stmt.Name);
+            }
+
             if (stmt.IsGlobal)
             {
                 // 根全局变量（global var x = ...）
@@ -323,6 +329,12 @@ namespace Azathrix.MiniPanda.Compiler
         /// <summary>编译函数声明</summary>
         private void CompileFuncDecl(FuncDecl stmt)
         {
+            // 记录导出
+            if (stmt.IsExport && _scopeDepth == 0)
+            {
+                _bytecode.Exports.Add(stmt.Name);
+            }
+
             var compiled = CompileFunction(stmt.Name, stmt.Parameters, stmt.Defaults, stmt.Body, FunctionType.Function, null, stmt.RestParam);
             var index = _bytecode.AddConstant(compiled.Prototype);
 
@@ -358,6 +370,12 @@ namespace Azathrix.MiniPanda.Compiler
         /// </remarks>
         private void CompileClassDecl(ClassDecl stmt)
         {
+            // 记录导出
+            if (stmt.IsExport && _scopeDepth == 0)
+            {
+                _bytecode.Exports.Add(stmt.Name);
+            }
+
             // 创建类对象
             var nameIndex = _bytecode.AddConstant(stmt.Name);
             Emit(Opcode.Class, stmt.Line);
@@ -510,6 +528,63 @@ namespace Azathrix.MiniPanda.Compiler
                 EmitUpvalueInfo(compiled.Upvalues, stmt.Line);
 
                 Emit(Opcode.Method, stmt.Line);
+                EmitShort((ushort)methodNameIndex, stmt.Line);
+            }
+
+            // 编译静态字段
+            foreach (var field in stmt.StaticFields)
+            {
+                // 加载类
+                if (stmt.IsGlobal || _scopeDepth == 0)
+                {
+                    Emit(Opcode.GetGlobal, field.Line);
+                    EmitShort((ushort)nameIndex, field.Line);
+                }
+                else
+                {
+                    var classIndex = ResolveLocal(stmt.Name);
+                    Emit(Opcode.GetLocal, field.Line);
+                    EmitByte((byte)classIndex, field.Line);
+                }
+
+                // 编译初始值
+                if (field.Initializer != null)
+                    CompileExpr(field.Initializer);
+                else
+                    Emit(Opcode.Null, field.Line);
+
+                // 设置静态字段
+                var fieldNameIndex = _bytecode.AddConstant(field.Name);
+                Emit(Opcode.StaticField, field.Line);
+                EmitShort((ushort)fieldNameIndex, field.Line);
+            }
+
+            // 编译静态方法
+            foreach (var method in stmt.StaticMethods)
+            {
+                var compiled = CompileFunction(method.Name, method.Parameters, method.Defaults, method.Body, FunctionType.Function, null, method.RestParam);
+                var methodIndex = _bytecode.AddConstant(compiled.Prototype);
+                var methodNameIndex = _bytecode.AddConstant(method.Name);
+
+                // 加载类
+                if (stmt.IsGlobal || _scopeDepth == 0)
+                {
+                    Emit(Opcode.GetGlobal, stmt.Line);
+                    EmitShort((ushort)nameIndex, stmt.Line);
+                }
+                else
+                {
+                    var classIndex = ResolveLocal(stmt.Name);
+                    Emit(Opcode.GetLocal, stmt.Line);
+                    EmitByte((byte)classIndex, stmt.Line);
+                }
+
+                // 生成闭包并添加为静态方法
+                Emit(Opcode.Closure, stmt.Line);
+                EmitShort((ushort)methodIndex, stmt.Line);
+                EmitUpvalueInfo(compiled.Upvalues, stmt.Line);
+
+                Emit(Opcode.StaticMethod, stmt.Line);
                 EmitShort((ushort)methodNameIndex, stmt.Line);
             }
         }

@@ -572,13 +572,17 @@ namespace Azathrix.MiniPanda.VM
             _loadingModules.Add(path);
             try
             {
+                // 加载并编译模块脚本
+                var script = GetOrLoadModuleScript(path);
+
                 // 创建模块作用域
                 var moduleEnv = GetScope($"module:{path}");
-                var module = new MiniPandaModule(path, moduleEnv);
+
+                // 创建模块对象（传入导出列表）
+                var module = new MiniPandaModule(path, moduleEnv, script.Bytecode.Exports);
                 _moduleCache[path] = module;
 
-                // 加载并执行模块脚本
-                var script = GetOrLoadModuleScript(path);
+                // 执行模块脚本
                 RunNested(script.Bytecode, moduleEnv);
 
                 return module;
@@ -749,8 +753,13 @@ namespace Azathrix.MiniPanda.VM
         /// <returns>函数返回值</returns>
         public Value CallFunction(MiniPandaFunction function, Value[] args)
         {
-            if (args.Length != function.Arity)
+            var hasRestParam = function.Prototype.RestParam != null;
+            // 无可变参数：参数数量必须匹配
+            // 有可变参数：允许任意数量 >= Arity
+            if (!hasRestParam && args.Length != function.Arity)
                 throw new MiniPandaRuntimeException($"Expected {function.Arity} arguments but got {args.Length}");
+            if (hasRestParam && args.Length < function.Arity)
+                throw new MiniPandaRuntimeException($"Expected at least {function.Arity} arguments but got {args.Length}");
             if (_frameCount >= FramesMax)
                 throw new MiniPandaRuntimeException("Stack overflow");
 
@@ -766,10 +775,29 @@ namespace Azathrix.MiniPanda.VM
 
             var stackBase = _stackTop - 1;
 
-            // 压入参数
-            foreach (var arg in args)
+            // 处理可变参数
+            if (hasRestParam)
             {
-                Push(arg);
+                // 压入普通参数
+                for (int i = 0; i < function.Arity; i++)
+                {
+                    Push(i < args.Length ? args[i] : Value.Null);
+                }
+                // 收集剩余参数到数组
+                var restArray = new MiniPandaArray();
+                for (int i = function.Arity; i < args.Length; i++)
+                {
+                    restArray.Elements.Add(args[i]);
+                }
+                Push(Value.FromObject(restArray));
+            }
+            else
+            {
+                // 压入参数
+                foreach (var arg in args)
+                {
+                    Push(arg);
+                }
             }
 
             _frames[_frameCount++] = new CallFrame
@@ -1313,6 +1341,11 @@ namespace Azathrix.MiniPanda.VM
                         {
                             Push(instance.Get(name));
                         }
+                        else if (obj.As<MiniPandaClass>() is { } klass)
+                        {
+                            // 访问类的静态成员
+                            Push(klass.GetStatic(name));
+                        }
                         else if (obj.As<MiniPandaModule>() is { } module)
                         {
                             Push(module.GetMember(name));
@@ -1352,6 +1385,11 @@ namespace Azathrix.MiniPanda.VM
                         if (obj.As<MiniPandaInstance>() is { } instance)
                         {
                             instance.Set(name, value);
+                        }
+                        else if (obj.As<MiniPandaClass>() is { } klass)
+                        {
+                            // 设置类的静态字段
+                            klass.SetStatic(name, value);
                         }
                         else if (obj.As<MiniPandaGlobalTable>() is { } globalTable)
                         {
@@ -1415,6 +1453,34 @@ namespace Azathrix.MiniPanda.VM
                         break;
                     }
 
+                    case Opcode.StaticMethod:
+                    {
+                        // 定义静态方法
+                        var index = ReadShort(ref frame);
+                        var name = frame.Bytecode.Constants[index] as string;
+                        var method = Pop().As<MiniPandaFunction>();
+                        var klass = Pop().As<MiniPandaClass>();
+                        if (klass != null && method != null)
+                        {
+                            klass.StaticMethods[name] = method;
+                        }
+                        break;
+                    }
+
+                    case Opcode.StaticField:
+                    {
+                        // 定义静态字段
+                        var index = ReadShort(ref frame);
+                        var name = frame.Bytecode.Constants[index] as string;
+                        var value = Pop();
+                        var klass = Pop().As<MiniPandaClass>();
+                        if (klass != null)
+                        {
+                            klass.StaticFields[name] = value;
+                        }
+                        break;
+                    }
+
                     // ==================== 方法调用 ====================
 
                     case Opcode.Invoke:
@@ -1464,10 +1530,33 @@ namespace Azathrix.MiniPanda.VM
                                 var result = native.Call(this, args);
                                 Push(result);
                             }
+                            else if (member.As<MiniPandaClass>() is { } klass)
+                            {
+                                // 模块中的类实例化
+                                _stack[_stackTop - argCount - 1] = Value.FromObject(klass);
+                                CallValue(member, argCount);
+                                frame = ref _frames[_frameCount - 1];
+                            }
                             else
                             {
                                 throw new MiniPandaRuntimeException(
                                     $"'{name}' is not a function in module '{module.Path}'");
+                            }
+                        }
+                        else if (receiver.As<MiniPandaClass>() is { } klass)
+                        {
+                            // 类静态方法调用
+                            var member = klass.GetStatic(name);
+                            if (member.As<MiniPandaFunction>() is { } func)
+                            {
+                                _stack[_stackTop - argCount - 1] = Value.FromObject(func);
+                                Call(func, argCount);
+                                frame = ref _frames[_frameCount - 1];
+                            }
+                            else
+                            {
+                                throw new MiniPandaRuntimeException(
+                                    $"'{name}' is not a static method on class '{klass.Name}'");
                             }
                         }
                         else if (receiver.As<MiniPandaGlobalTable>() is { } globalTable)

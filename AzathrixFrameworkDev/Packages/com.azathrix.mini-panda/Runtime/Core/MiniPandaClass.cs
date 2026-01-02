@@ -4,11 +4,18 @@ using Azathrix.MiniPanda.VM;
 
 namespace Azathrix.MiniPanda.Core
 {
+    /// <summary>
+    /// MiniPanda 类对象
+    /// </summary>
     public class MiniPandaClass : MiniPandaHeapObject
     {
         public string Name { get; }
         public MiniPandaClass SuperClass { get; set; }
         public Dictionary<string, MiniPandaFunction> Methods { get; } = new Dictionary<string, MiniPandaFunction>();
+        /// <summary>静态字段</summary>
+        public Dictionary<string, Value> StaticFields { get; } = new Dictionary<string, Value>();
+        /// <summary>静态方法</summary>
+        public Dictionary<string, MiniPandaFunction> StaticMethods { get; } = new Dictionary<string, MiniPandaFunction>();
 
         public MiniPandaClass(string name)
         {
@@ -20,6 +27,22 @@ namespace Azathrix.MiniPanda.Core
             if (Methods.TryGetValue(name, out var method))
                 return method;
             return SuperClass?.FindMethod(name);
+        }
+
+        /// <summary>查找静态成员（字段或方法）</summary>
+        public Value GetStatic(string name)
+        {
+            if (StaticFields.TryGetValue(name, out var field))
+                return field;
+            if (StaticMethods.TryGetValue(name, out var method))
+                return Value.FromObject(method);
+            return SuperClass?.GetStatic(name) ?? Value.Null;
+        }
+
+        /// <summary>设置静态字段</summary>
+        public void SetStatic(string name, Value value)
+        {
+            StaticFields[name] = value;
         }
 
         public override string ToString() => $"<class {Name}>";

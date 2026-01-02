@@ -54,20 +54,28 @@ namespace Azathrix.MiniPanda.Parser
         /// </summary>
         private Stmt Declaration()
         {
-            if (Match(TokenType.Var)) return VarDeclaration(false);
-            if (Match(TokenType.Func)) return FuncDeclaration(false);
-            if (Match(TokenType.Class)) return ClassDeclaration(false);
+            if (Match(TokenType.Var)) return VarDeclaration(false, false);
+            if (Match(TokenType.Func)) return FuncDeclaration(false, false);
+            if (Match(TokenType.Class)) return ClassDeclaration(false, false);
             if (Match(TokenType.Import)) return ImportDeclaration(false);
             if (Match(TokenType.Enum)) return EnumDeclaration(false);
             // global 修饰符
             if (Match(TokenType.Global))
             {
                 if (Match(TokenType.Import)) return ImportDeclaration(true);
-                if (Match(TokenType.Var)) return VarDeclaration(true);
-                if (Match(TokenType.Func)) return FuncDeclaration(true);
-                if (Match(TokenType.Class)) return ClassDeclaration(true);
+                if (Match(TokenType.Var)) return VarDeclaration(true, false);
+                if (Match(TokenType.Func)) return FuncDeclaration(true, false);
+                if (Match(TokenType.Class)) return ClassDeclaration(true, false);
                 if (Match(TokenType.Enum)) return EnumDeclaration(true);
                 throw Error("Expected 'import', 'var', 'func', 'class', or 'enum' after 'global'");
+            }
+            // export 修饰符（模块导出）
+            if (Match(TokenType.Export))
+            {
+                if (Match(TokenType.Var)) return VarDeclaration(false, true);
+                if (Match(TokenType.Func)) return FuncDeclaration(false, true);
+                if (Match(TokenType.Class)) return ClassDeclaration(false, true);
+                throw Error("Expected 'var', 'func', or 'class' after 'export'");
             }
             return Statement();
         }
@@ -76,7 +84,8 @@ namespace Azathrix.MiniPanda.Parser
         /// 解析变量声明
         /// </summary>
         /// <param name="isGlobal">是否是全局变量</param>
-        private Stmt VarDeclaration(bool isGlobal)
+        /// <param name="isExport">是否导出</param>
+        private Stmt VarDeclaration(bool isGlobal, bool isExport = false)
         {
             var name = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
             Expr initializer = null;
@@ -85,14 +94,15 @@ namespace Azathrix.MiniPanda.Parser
                 initializer = Expression();
             }
             ConsumeStatementEnd();
-            return new VarDecl { Name = name, Initializer = initializer, IsGlobal = isGlobal, Line = Previous().Line };
+            return new VarDecl { Name = name, Initializer = initializer, IsGlobal = isGlobal, IsExport = isExport, Line = Previous().Line };
         }
 
         /// <summary>
         /// 解析函数声明
         /// </summary>
         /// <param name="isGlobal">是否是全局函数</param>
-        private FuncDecl FuncDeclaration(bool isGlobal)
+        /// <param name="isExport">是否导出</param>
+        private FuncDecl FuncDeclaration(bool isGlobal, bool isExport = false)
         {
             var name = Consume(TokenType.Identifier, "Expected function name").Lexeme;
             Consume(TokenType.LeftParen, "Expected '(' after function name");
@@ -142,14 +152,15 @@ namespace Azathrix.MiniPanda.Parser
                 body = new List<Stmt> { stmt };
             }
 
-            return new FuncDecl { Name = name, Parameters = parameters, Defaults = defaults, RestParam = restParam, Body = body, IsGlobal = isGlobal, Line = Previous().Line };
+            return new FuncDecl { Name = name, Parameters = parameters, Defaults = defaults, RestParam = restParam, Body = body, IsGlobal = isGlobal, IsExport = isExport, Line = Previous().Line };
         }
 
         /// <summary>
         /// 解析类声明
         /// </summary>
         /// <param name="isGlobal">是否是全局类</param>
-        private Stmt ClassDeclaration(bool isGlobal)
+        /// <param name="isExport">是否导出</param>
+        private Stmt ClassDeclaration(bool isGlobal, bool isExport = false)
         {
             var name = Consume(TokenType.Identifier, "Expected class name").Lexeme;
             // 解析继承
@@ -163,12 +174,18 @@ namespace Azathrix.MiniPanda.Parser
 
             var fields = new List<VarDecl>();
             var methods = new List<FuncDecl>();
+            var staticFields = new List<VarDecl>();
+            var staticMethods = new List<FuncDecl>();
 
             // 解析类成员
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
                 SkipNewlines();
                 if (Check(TokenType.RightBrace)) break;
+
+                // 检查 static 修饰符
+                bool isStatic = Match(TokenType.Static);
+
                 if (Match(TokenType.Var))
                 {
                     // 字段声明
@@ -179,14 +196,23 @@ namespace Azathrix.MiniPanda.Parser
                         initializer = Expression();
                     }
                     ConsumeStatementEnd();
-                    fields.Add(new VarDecl { Name = fieldToken.Lexeme, Initializer = initializer, Line = fieldToken.Line, Column = fieldToken.Column });
+                    var field = new VarDecl { Name = fieldToken.Lexeme, Initializer = initializer, IsStatic = isStatic, Line = fieldToken.Line, Column = fieldToken.Column };
+                    if (isStatic)
+                        staticFields.Add(field);
+                    else
+                        fields.Add(field);
                 }
                 else if (Match(TokenType.Func))
                 {
                     // 方法声明
-                    methods.Add(FuncDeclaration(false));
+                    var method = FuncDeclaration(false);
+                    method.IsStatic = isStatic;
+                    if (isStatic)
+                        staticMethods.Add(method);
+                    else
+                        methods.Add(method);
                 }
-                else if (Check(TokenType.Identifier) && Peek().Lexeme == name && CheckNext(TokenType.LeftParen))
+                else if (!isStatic && Check(TokenType.Identifier) && Peek().Lexeme == name && CheckNext(TokenType.LeftParen))
                 {
                     // 构造函数: ClassName(...) { ... }
                     Advance(); // 消费类名
@@ -200,7 +226,7 @@ namespace Azathrix.MiniPanda.Parser
             }
 
             Consume(TokenType.RightBrace, "Expected '}' after class body");
-            return new ClassDecl { Name = name, SuperClass = superClass, Fields = fields, Methods = methods, IsGlobal = isGlobal, Line = Previous().Line };
+            return new ClassDecl { Name = name, SuperClass = superClass, Fields = fields, Methods = methods, StaticFields = staticFields, StaticMethods = staticMethods, IsGlobal = isGlobal, IsExport = isExport, Line = Previous().Line };
         }
 
         /// <summary>

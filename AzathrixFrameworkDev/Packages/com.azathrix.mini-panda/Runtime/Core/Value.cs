@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 
 namespace Azathrix.MiniPanda.Core
 {
@@ -192,65 +193,124 @@ namespace Azathrix.MiniPanda.Core
 
         #region 委托转换
 
-        /// <summary>创建 C# 委托包装 MiniPanda 函数</summary>
+        /// <summary>
+        /// 使用表达式树创建任意签名的 C# 委托包装 MiniPanda 函数
+        /// </summary>
         private static object CreateDelegate(Type delegateType, ICallable callable, VM.VirtualMachine vm)
         {
             var invoke = delegateType.GetMethod("Invoke");
             var parameters = invoke.GetParameters();
             var returnType = invoke.ReturnType;
 
-            // Create a wrapper that calls the MiniPanda function
-            if (returnType == typeof(void))
+            // 创建参数表达式
+            var paramExprs = new System.Linq.Expressions.ParameterExpression[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
             {
-                // Action variants
-                return parameters.Length switch
-                {
-                    0 => new Action(() => callable.Call(vm, Array.Empty<Value>())),
-                    1 => CreateAction1(callable, vm),
-                    2 => CreateAction2(callable, vm),
-                    _ => throw new NotSupportedException($"Delegate with {parameters.Length} parameters not supported")
-                };
+                paramExprs[i] = System.Linq.Expressions.Expression.Parameter(parameters[i].ParameterType, $"p{i}");
+            }
+
+            // 捕获变量
+            var callableConst = System.Linq.Expressions.Expression.Constant(callable);
+            var vmConst = System.Linq.Expressions.Expression.Constant(vm);
+
+            // 检查最后一个参数是否是 params 数组
+            bool hasParams = parameters.Length > 0 &&
+                parameters[parameters.Length - 1].GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0;
+
+            System.Linq.Expressions.Expression valueArrayExpr;
+            if (hasParams && parameters.Length > 0)
+            {
+                // 有 params 参数：普通参数 + 展开的数组
+                var lastParam = paramExprs[parameters.Length - 1];
+                var normalParams = paramExprs.Take(parameters.Length - 1)
+                    .Select(p => BuildConvertToValue(p)).ToList();
+
+                // 调用辅助方法展开 params 数组
+                var expandMethod = typeof(Value).GetMethod("ExpandParamsArray",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                var expandedExpr = System.Linq.Expressions.Expression.Call(expandMethod, lastParam);
+
+                // 合并普通参数和展开的数组
+                var concatMethod = typeof(Value).GetMethod("ConcatValueArrays",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                var normalArrayExpr = System.Linq.Expressions.Expression.NewArrayInit(typeof(Value), normalParams);
+                valueArrayExpr = System.Linq.Expressions.Expression.Call(concatMethod, normalArrayExpr, expandedExpr);
             }
             else
             {
-                // Func variants
-                return parameters.Length switch
-                {
-                    0 => CreateFunc0(callable, returnType, vm),
-                    1 => CreateFunc1(callable, returnType, vm),
-                    2 => CreateFunc2(callable, returnType, vm),
-                    _ => throw new NotSupportedException($"Delegate with {parameters.Length} parameters not supported")
-                };
+                // 无 params：直接构建数组
+                valueArrayExpr = System.Linq.Expressions.Expression.NewArrayInit(
+                    typeof(Value),
+                    paramExprs.Select(p => BuildConvertToValue(p)).ToArray()
+                );
             }
+
+            // 调用 callable.Call(vm, args)
+            var callMethod = typeof(ICallable).GetMethod("Call");
+            var callExpr = System.Linq.Expressions.Expression.Call(
+                callableConst, callMethod, vmConst, valueArrayExpr);
+
+            System.Linq.Expressions.Expression body;
+            if (returnType == typeof(void))
+            {
+                // Action: 直接调用，忽略返回值
+                body = callExpr;
+            }
+            else
+            {
+                // Func: 调用 ToType 转换返回值
+                var toTypeMethod = typeof(Value).GetMethod("ToType", new[] { typeof(Type), typeof(VM.VirtualMachine) });
+                var returnTypeConst = System.Linq.Expressions.Expression.Constant(returnType);
+                var toTypeCall = System.Linq.Expressions.Expression.Call(
+                    callExpr, toTypeMethod, returnTypeConst, vmConst);
+                body = System.Linq.Expressions.Expression.Convert(toTypeCall, returnType);
+            }
+
+            var lambda = System.Linq.Expressions.Expression.Lambda(delegateType, body, paramExprs);
+            return lambda.Compile();
         }
 
-        private static Delegate CreateAction1(ICallable c, VM.VirtualMachine vm)
+        /// <summary>构建将参数转换为 Value 的表达式</summary>
+        private static System.Linq.Expressions.Expression BuildConvertToValue(System.Linq.Expressions.Expression param)
         {
-            return new Action<object>(a => c.Call(vm, new[] { ConvertArg(a) }));
-        }
+            var paramType = param.Type;
 
-        private static Delegate CreateAction2(ICallable c, VM.VirtualMachine vm)
-        {
-            return new Action<object, object>((a, b) => c.Call(vm, new[] { ConvertArg(a), ConvertArg(b) }));
-        }
+            // 如果已经是 Value，直接返回
+            if (paramType == typeof(Value))
+                return param;
 
-        private static Delegate CreateFunc0(ICallable c, Type ret, VM.VirtualMachine vm)
-        {
-            return new Func<object>(() => c.Call(vm, Array.Empty<Value>()).ToType(ret, vm));
-        }
+            // bool -> Value.FromBool
+            if (paramType == typeof(bool))
+                return System.Linq.Expressions.Expression.Call(
+                    typeof(Value).GetMethod("FromBool"), param);
 
-        private static Delegate CreateFunc1(ICallable c, Type ret, VM.VirtualMachine vm)
-        {
-            return new Func<object, object>(a => c.Call(vm, new[] { ConvertArg(a) }).ToType(ret, vm));
-        }
+            // 数值类型 -> Value.FromNumber
+            if (paramType == typeof(int) || paramType == typeof(long) ||
+                paramType == typeof(float) || paramType == typeof(double))
+            {
+                var converted = System.Linq.Expressions.Expression.Convert(param, typeof(double));
+                return System.Linq.Expressions.Expression.Call(
+                    typeof(Value).GetMethod("FromNumber"), converted);
+            }
 
-        private static Delegate CreateFunc2(ICallable c, Type ret, VM.VirtualMachine vm)
-        {
-            return new Func<object, object, object>((a, b) => c.Call(vm, new[] { ConvertArg(a), ConvertArg(b) }).ToType(ret, vm));
+            // string -> Value.FromObject(new MiniPandaString)
+            if (paramType == typeof(string))
+            {
+                var newStr = System.Linq.Expressions.Expression.New(
+                    typeof(MiniPandaString).GetConstructor(new[] { typeof(string) }), param);
+                return System.Linq.Expressions.Expression.Call(
+                    typeof(Value).GetMethod("FromObject"), newStr);
+            }
+
+            // 其他类型 -> ConvertArg
+            var boxed = System.Linq.Expressions.Expression.Convert(param, typeof(object));
+            return System.Linq.Expressions.Expression.Call(
+                typeof(Value).GetMethod("ConvertArg", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static),
+                boxed);
         }
 
         /// <summary>将 C# 参数转换为 Value</summary>
-        private static Value ConvertArg(object arg)
+        internal static Value ConvertArg(object arg)
         {
             return arg switch
             {
@@ -264,6 +324,25 @@ namespace Azathrix.MiniPanda.Core
                 Value v => v,
                 _ => FromObject(new MiniPandaString(arg.ToString()))
             };
+        }
+
+        /// <summary>展开 params 数组为 Value[]</summary>
+        private static Value[] ExpandParamsArray(object[] args)
+        {
+            if (args == null) return Array.Empty<Value>();
+            var result = new Value[args.Length];
+            for (int i = 0; i < args.Length; i++)
+                result[i] = ConvertArg(args[i]);
+            return result;
+        }
+
+        /// <summary>合并两个 Value 数组</summary>
+        private static Value[] ConcatValueArrays(Value[] a, Value[] b)
+        {
+            var result = new Value[a.Length + b.Length];
+            a.CopyTo(result, 0);
+            b.CopyTo(result, a.Length);
+            return result;
         }
 
         #endregion

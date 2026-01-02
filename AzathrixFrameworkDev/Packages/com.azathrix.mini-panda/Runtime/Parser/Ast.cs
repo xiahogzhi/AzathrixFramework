@@ -18,6 +18,8 @@ namespace Azathrix.MiniPanda.Parser
         public string Name;
         public Expr Initializer;
         public bool IsGlobal;
+        public bool IsStatic;  // 静态成员（类内部使用）
+        public bool IsExport;  // 模块导出
     }
 
     public class FuncDecl : Stmt
@@ -28,15 +30,20 @@ namespace Azathrix.MiniPanda.Parser
         public string RestParam;     // Rest parameter name (null if none)
         public List<Stmt> Body;
         public bool IsGlobal;
+        public bool IsStatic;  // 静态方法（类内部使用）
+        public bool IsExport;  // 模块导出
     }
 
     public class ClassDecl : Stmt
     {
         public string Name;
         public string SuperClass;
-        public List<VarDecl> Fields;
-        public List<FuncDecl> Methods;
+        public List<VarDecl> Fields;        // 实例字段
+        public List<FuncDecl> Methods;      // 实例方法
+        public List<VarDecl> StaticFields;  // 静态字段
+        public List<FuncDecl> StaticMethods; // 静态方法
         public bool IsGlobal;
+        public bool IsExport;  // 模块导出
     }
 
     public class IfStmt : Stmt

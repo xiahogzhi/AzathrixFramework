@@ -23,6 +23,7 @@ public class MiniPandaDemo : MonoBehaviour
         BasicExample();
         FunctionExample();
         ClassExample();
+        StaticMemberExample();
         InteropExample();
         ImportExample();
     }
@@ -127,6 +128,55 @@ public class MiniPandaDemo : MonoBehaviour
             print(""v2 = "" + v2.toString())
             print(""v1 + v2 = "" + v3.toString())
             print(""v1 长度 = "" + v1.magnitude())
+        ");
+    }
+
+    void StaticMemberExample()
+    {
+        Debug.Log("=== 静态成员示例 ===");
+
+        _panda.Run(@"
+            class Counter {
+                static var count = 0
+
+                static func increment() {
+                    Counter.count = Counter.count + 1
+                    return Counter.count
+                }
+
+                static func getCount() {
+                    return Counter.count
+                }
+
+                var id
+
+                Counter() {
+                    Counter.count = Counter.count + 1
+                    this.id = Counter.count
+                }
+
+                func getId() {
+                    return this.id
+                }
+            }
+
+            // 测试静态字段和方法
+            print(""初始 count: "" + Counter.count)
+            print(""increment: "" + Counter.increment())
+            print(""increment: "" + Counter.increment())
+            print(""getCount: "" + Counter.getCount())
+
+            // 测试静态字段赋值
+            Counter.count = 100
+            print(""设置后 count: "" + Counter.count)
+
+            // 测试实例与静态的交互
+            Counter.count = 0
+            var a = Counter()
+            var b = Counter()
+            print(""创建2个实例后, 总数: "" + Counter.count)
+            print(""实例 a 的 id: "" + a.getId())
+            print(""实例 b 的 id: "" + b.getId())
         ");
     }
 

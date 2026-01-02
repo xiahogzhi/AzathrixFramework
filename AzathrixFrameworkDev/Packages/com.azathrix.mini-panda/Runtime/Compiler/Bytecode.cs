@@ -10,6 +10,8 @@ namespace Azathrix.MiniPanda.Compiler
         public List<object> Constants { get; } = new List<object>();
         public List<int> Lines { get; } = new List<int>();
         public string SourceFile { get; set; }
+        /// <summary>导出的符号名称列表</summary>
+        public HashSet<string> Exports { get; } = new HashSet<string>();
 
         // Deduplicate strings and numbers to reduce constant table size.
         private readonly Dictionary<string, int> _stringPool = new Dictionary<string, int>();

@@ -1,0 +1,89 @@
+// 静态成员测试
+
+class Counter {
+    static var count = 0
+    static var name = "Counter"
+
+    static func increment() {
+        Counter.count = Counter.count + 1
+        return Counter.count
+    }
+
+    static func getCount() {
+        return Counter.count
+    }
+
+    static func reset() {
+        Counter.count = 0
+    }
+
+    var id
+
+    Counter() {
+        Counter.count = Counter.count + 1
+        this.id = Counter.count
+    }
+
+    func getId() {
+        return this.id
+    }
+}
+
+// 测试静态字段访问
+print("=== 静态字段测试 ===")
+print("初始 count: " + Counter.count)
+print("类名: " + Counter.name)
+
+// 测试静态方法
+print("\n=== 静态方法测试 ===")
+print("increment: " + Counter.increment())
+print("increment: " + Counter.increment())
+print("getCount: " + Counter.getCount())
+
+// 测试静态字段赋值
+print("\n=== 静态字段赋值测试 ===")
+Counter.count = 100
+print("设置后 count: " + Counter.count)
+
+// 测试 reset
+Counter.reset()
+print("reset 后 count: " + Counter.count)
+
+// 测试实例与静态的交互
+print("\n=== 实例与静态交互测试 ===")
+var a = Counter()
+print("创建实例 a, id: " + a.getId() + ", 总数: " + Counter.count)
+
+var b = Counter()
+print("创建实例 b, id: " + b.getId() + ", 总数: " + Counter.count)
+
+var c = Counter()
+print("创建实例 c, id: " + c.getId() + ", 总数: " + Counter.count)
+
+// 测试继承中的静态成员
+print("\n=== 继承静态成员测试 ===")
+
+class Animal {
+    static var species = "Unknown"
+
+    static func describe() {
+        return "Species: " + Animal.species
+    }
+}
+
+class Dog < Animal {
+    static var breed = "Unknown"
+
+    static func info() {
+        return Animal.species + " - " + Dog.breed
+    }
+}
+
+Animal.species = "Mammal"
+Dog.breed = "Labrador"
+
+print("Animal.species: " + Animal.species)
+print("Dog.breed: " + Dog.breed)
+print("Dog.info: " + Dog.info())
+
+print("\n=== 测试完成 ===")

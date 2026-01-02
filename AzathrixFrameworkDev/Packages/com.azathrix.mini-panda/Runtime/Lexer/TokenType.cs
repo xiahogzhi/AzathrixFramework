@@ -82,6 +82,8 @@ namespace Azathrix.MiniPanda.Lexer
         Finally,
         Throw,
         Enum,
+        Static,
+        Export,
 
         // Special
         Newline,

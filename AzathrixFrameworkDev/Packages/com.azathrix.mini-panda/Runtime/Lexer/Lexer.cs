@@ -48,6 +48,8 @@ namespace Azathrix.MiniPanda.Lexer
             {"finally", TokenType.Finally},
             {"throw", TokenType.Throw},
             {"enum", TokenType.Enum},
+            {"static", TokenType.Static},
+            {"export", TokenType.Export},
             {"true", TokenType.True},
             {"false", TokenType.False},
             {"null", TokenType.Null}
