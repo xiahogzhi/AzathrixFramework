@@ -1131,7 +1131,7 @@ namespace Azathrix.MiniPanda.Parser
         /// <summary>获取下一个 token（不前进）</summary>
         private Token PeekNext() => _current + 1 < _tokens.Count ? _tokens[_current + 1] : _tokens[_current];
         /// <summary>获取上一个 token</summary>
-        private Token Previous() => _tokens[_current - 1];
+        private Token Previous() => _current > 0 ? _tokens[_current - 1] : _tokens[0];
 
         /// <summary>消费指定类型的 token，不匹配则抛出异常</summary>
         private Token Consume(TokenType type, string message)

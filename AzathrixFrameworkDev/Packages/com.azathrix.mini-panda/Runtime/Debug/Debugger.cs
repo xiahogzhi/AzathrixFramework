@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
@@ -87,6 +87,7 @@ namespace Azathrix.MiniPanda.Debug
         public bool RemoveBreakpoint(string file, int line)
         {
             var normalizedFile = NormalizePath(file);
+
             if (_breakpoints.TryGetValue(normalizedFile, out var fileBreakpoints))
             {
                 return fileBreakpoints.TryRemove(line, out _);
@@ -103,9 +104,6 @@ namespace Azathrix.MiniPanda.Debug
             _breakpoints.TryRemove(normalizedFile, out _);
         }
 
-        /// <summary>
-        /// 清除所有断点
-        /// </summary>
         public void ClearAllBreakpoints()
         {
             _breakpoints.Clear();
@@ -133,6 +131,16 @@ namespace Azathrix.MiniPanda.Debug
             if (!Enabled) return false;
 
             var normalizedFile = NormalizePath(file);
+
+            // 快路径：精确匹配文件
+            if (_breakpoints.TryGetValue(normalizedFile, out var exactBreakpoints))
+            {
+                if (exactBreakpoints.TryGetValue(line, out breakpoint) && breakpoint.Enabled)
+                {
+                    breakpoint.HitCount++;
+                    return true;
+                }
+            }
 
             foreach (var kvp in _breakpoints)
             {
@@ -325,3 +333,13 @@ namespace Azathrix.MiniPanda.Debug
         }
     }
 }
+
+
+
+
+
+
+
+
+
+

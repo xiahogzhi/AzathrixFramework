@@ -1,6 +1,6 @@
 ﻿{
     "name": "Azathrix.MiniPanda",
-    "references": [],
+    "references": ["Newtonsoft.Json"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
@@ -11,3 +11,4 @@
     "versionDefines": [],
     "noEngineReferences": false
 }
+

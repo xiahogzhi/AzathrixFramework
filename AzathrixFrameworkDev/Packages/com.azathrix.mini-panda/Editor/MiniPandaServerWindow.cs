@@ -29,6 +29,13 @@ namespace Azathrix.MiniPanda.Editor
         {
             if (_lspServer?.IsRunning == true) return;
 
+            // 先清理旧实例
+            if (_lspServer != null)
+            {
+                _lspServer.Dispose();
+                _lspServer = null;
+            }
+
             try
             {
                 _lspServer = new LanguageServer();
@@ -44,7 +51,7 @@ namespace Azathrix.MiniPanda.Editor
         {
             try
             {
-                _lspServer?.Stop();
+                _lspServer?.Dispose();
             }
             catch { }
             _lspServer = null;

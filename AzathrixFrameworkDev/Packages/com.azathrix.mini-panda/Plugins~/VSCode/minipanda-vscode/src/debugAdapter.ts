@@ -1,4 +1,4 @@
-import {
+﻿import {
     LoggingDebugSession,
     InitializedEvent,
     TerminatedEvent,
@@ -409,31 +409,31 @@ export class MiniPandaDebugSession extends LoggingDebugSession {
         });
     }
 
-    // 处理服务器数据
-    private buffer = '';
+    // 处理服务器数据（按字节解析 Content-Length）
+    private buffer = Buffer.alloc(0);
     private handleServerData(data: Buffer): void {
-        this.buffer += data.toString();
+        this.buffer = Buffer.concat([this.buffer, data]);
 
         while (true) {
             const headerEnd = this.buffer.indexOf('\r\n\r\n');
             if (headerEnd < 0) break;
 
-            const header = this.buffer.substring(0, headerEnd);
+            const header = this.buffer.slice(0, headerEnd).toString('ascii');
             const match = header.match(/Content-Length:\s*(\d+)/i);
             if (!match) {
-                this.buffer = this.buffer.substring(headerEnd + 4);
+                this.buffer = this.buffer.slice(headerEnd + 4);
                 continue;
             }
 
-            const contentLength = parseInt(match[1]);
+            const contentLength = parseInt(match[1], 10);
             const contentStart = headerEnd + 4;
             if (this.buffer.length < contentStart + contentLength) break;
 
-            const content = this.buffer.substring(contentStart, contentStart + contentLength);
-            this.buffer = this.buffer.substring(contentStart + contentLength);
+            const contentBuf = this.buffer.slice(contentStart, contentStart + contentLength);
+            this.buffer = this.buffer.slice(contentStart + contentLength);
 
             try {
-                const message = JSON.parse(content);
+                const message = JSON.parse(contentBuf.toString('utf8'));
                 this.handleServerMessage(message);
             } catch (e) {
                 // 忽略解析错误
@@ -475,3 +475,7 @@ export class MiniPandaDebugSession extends LoggingDebugSession {
         }
     }
 }
+
+
+
+

@@ -44,6 +44,7 @@ let retryTimer = null;
 let shouldRetry = true;
 let activeSocket = null;
 let isStarting = false; // 防止重复启动
+let startToken = 0; // 防止并发重连
 function activate(context) {
     console.log('[MiniPanda] Extension activating...');
     // 注册调试适配器工厂
@@ -77,6 +78,10 @@ function deactivate() {
 }
 function createConnection(host, port) {
     return new Promise((resolve, reject) => {
+        if (activeSocket) {
+            activeSocket.destroy();
+            activeSocket = null;
+        }
         const socket = new Net.Socket();
         socket.setKeepAlive(true, 10000);
         socket.setNoDelay(true);
@@ -94,6 +99,11 @@ function createConnection(host, port) {
             clearTimeout(timeout);
             socket.destroy();
             reject(err);
+        });
+        socket.on('close', () => {
+            if (activeSocket === socket) {
+                activeSocket = null;
+            }
         });
         socket.connect(port, host);
     });
@@ -118,6 +128,7 @@ async function startLanguageClient(context) {
         }
     }
     isStarting = true;
+    const myToken = ++startToken;
     currentContext = context;
     shouldRetry = true;
     const config = vscode.workspace.getConfiguration('minipanda');
@@ -125,7 +136,7 @@ async function startLanguageClient(context) {
     const host = config.get('languageServer.host', 'localhost');
     const serverOptions = async () => {
         // 重试连接
-        while (shouldRetry) {
+        while (shouldRetry && myToken === startToken) {
             try {
                 return await createConnection(host, port);
             }
@@ -151,10 +162,10 @@ async function startLanguageClient(context) {
     // 监控客户端状态
     languageClient.onDidChangeState(e => {
         console.log(`[MiniPanda] Client state: ${node_1.State[e.oldState]} -> ${node_1.State[e.newState]}`);
-        if (e.newState === node_1.State.Stopped && shouldRetry) {
+        if (e.newState === node_1.State.Stopped && shouldRetry && !isStarting) {
             console.log('[MiniPanda] Language client stopped, restarting...');
             setTimeout(() => {
-                if (shouldRetry && currentContext) {
+                if (shouldRetry && currentContext && !isStarting) {
                     startLanguageClient(currentContext);
                 }
             }, 3000);

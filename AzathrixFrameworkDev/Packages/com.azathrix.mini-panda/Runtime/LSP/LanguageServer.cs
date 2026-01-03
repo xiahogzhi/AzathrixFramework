@@ -1,9 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Threading;
 
 namespace Azathrix.MiniPanda.LSP
@@ -18,6 +21,8 @@ namespace Azathrix.MiniPanda.LSP
         private Thread _listenThread;
         private bool _running;
         private int _seq = 1;
+        private readonly ConcurrentDictionary<int, TcpClient> _clients = new ConcurrentDictionary<int, TcpClient>();
+        private int _nextClientId;
 
         public int Port { get; private set; }
         public bool IsRunning => _running;
@@ -58,6 +63,10 @@ namespace Azathrix.MiniPanda.LSP
 
             _running = false;
             _listener?.Stop();
+            foreach (var kv in _clients)
+            {
+                try { kv.Value.Close(); } catch (Exception ex) { UnityEngine.Debug.LogWarning($"[MiniPanda] LSP: Close client error: {ex.Message}"); }
+            }
             _listenThread?.Join(1000);
 
             UnityEngine.Debug.Log("[MiniPanda] LSP server stopped");
@@ -94,6 +103,9 @@ namespace Azathrix.MiniPanda.LSP
         {
             UnityEngine.Debug.Log("[MiniPanda] LSP client connected");
 
+            var clientId = Interlocked.Increment(ref _nextClientId);
+            _clients[clientId] = client;
+
             var thread = new Thread(() =>
             {
                 try
@@ -120,6 +132,7 @@ namespace Azathrix.MiniPanda.LSP
                 }
                 finally
                 {
+                    _clients.TryRemove(clientId, out _);
                     client.Close();
                     UnityEngine.Debug.Log("[MiniPanda] LSP client disconnected");
                 }
@@ -168,6 +181,8 @@ namespace Azathrix.MiniPanda.LSP
                     if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase))
                     {
                         contentLength = int.Parse(line.Substring(15).Trim());
+                        if (contentLength > 10 * 1024 * 1024) // 10MB 上限
+                            return null;
                     }
                 }
 
@@ -520,180 +535,53 @@ namespace Azathrix.MiniPanda.LSP
         // JSON 解析
         private Dictionary<string, object> ParseJson(string json)
         {
-            var index = 0;
-            return ParseObject(json, ref index);
-        }
-
-        private Dictionary<string, object> ParseObject(string json, ref int index)
-        {
-            var dict = new Dictionary<string, object>();
-            SkipWhitespace(json, ref index);
-            if (index >= json.Length || json[index] != '{') return dict;
-            index++; // skip '{'
-
-            while (index < json.Length)
-            {
-                SkipWhitespace(json, ref index);
-                if (index >= json.Length || json[index] == '}') { index++; break; }
-
-                // Parse key
-                var key = ParseString(json, ref index);
-                SkipWhitespace(json, ref index);
-                if (index >= json.Length || json[index] != ':') break;
-                index++; // skip ':'
-
-                // Parse value
-                var value = ParseValue(json, ref index);
-                dict[key] = value;
-
-                SkipWhitespace(json, ref index);
-                if (index < json.Length && json[index] == ',') index++;
-            }
-            return dict;
-        }
-
-        private object ParseValue(string json, ref int index)
-        {
-            SkipWhitespace(json, ref index);
-            if (index >= json.Length) return null;
-
-            var c = json[index];
-            if (c == '"') return ParseString(json, ref index);
-            if (c == '{') return ParseObject(json, ref index);
-            if (c == '[') return ParseArray(json, ref index);
-            if (c == 't') { index += 4; return true; }
-            if (c == 'f') { index += 5; return false; }
-            if (c == 'n') { index += 4; return null; }
-            if (c == '-' || char.IsDigit(c)) return ParseNumber(json, ref index);
-            return null;
-        }
-
-        private string ParseString(string json, ref int index)
-        {
-            if (index >= json.Length || json[index] != '"') return "";
-            index++; // skip '"'
-            var sb = new StringBuilder();
-            while (index < json.Length && json[index] != '"')
-            {
-                if (json[index] == '\\' && index + 1 < json.Length)
-                {
-                    index++;
-                    switch (json[index])
-                    {
-                        case 'n': sb.Append('\n'); break;
-                        case 'r': sb.Append('\r'); break;
-                        case 't': sb.Append('\t'); break;
-                        case '"': sb.Append('"'); break;
-                        case '\\': sb.Append('\\'); break;
-                        default: sb.Append(json[index]); break;
-                    }
-                }
-                else
-                {
-                    sb.Append(json[index]);
-                }
-                index++;
-            }
-            if (index < json.Length) index++; // skip closing '"'
-            return sb.ToString();
-        }
-
-        private object[] ParseArray(string json, ref int index)
-        {
-            var list = new List<object>();
-            if (index >= json.Length || json[index] != '[') return list.ToArray();
-            index++; // skip '['
-
-            while (index < json.Length)
-            {
-                SkipWhitespace(json, ref index);
-                if (index >= json.Length || json[index] == ']') { index++; break; }
-                list.Add(ParseValue(json, ref index));
-                SkipWhitespace(json, ref index);
-                if (index < json.Length && json[index] == ',') index++;
-            }
-            return list.ToArray();
-        }
-
-        private object ParseNumber(string json, ref int index)
-        {
-            var start = index;
-            if (json[index] == '-') index++;
-            while (index < json.Length && (char.IsDigit(json[index]) || json[index] == '.' || json[index] == 'e' || json[index] == 'E' || json[index] == '+' || json[index] == '-'))
-                index++;
-            var numStr = json.Substring(start, index - start);
-            if (numStr.Contains(".") || numStr.Contains("e") || numStr.Contains("E"))
-                return double.TryParse(numStr, out var d) ? d : 0.0;
-            return int.TryParse(numStr, out var i) ? i : 0;
-        }
-
-        private void SkipWhitespace(string json, ref int index)
-        {
-            while (index < json.Length && char.IsWhiteSpace(json[index])) index++;
+            if (string.IsNullOrEmpty(json)) return new Dictionary<string, object>();
+            var token = JToken.Parse(json);
+            return ToPlainObject(token) as Dictionary<string, object> ?? new Dictionary<string, object>();
         }
 
         private string SerializeJson(Dictionary<string, object> obj)
         {
-            // 简化实现
-            var sb = new StringBuilder();
-            SerializeValue(sb, obj);
-            return sb.ToString();
+            return JsonConvert.SerializeObject(obj);
         }
 
-        private void SerializeValue(StringBuilder sb, object value)
+        private static object ToPlainObject(JToken token)
         {
-            switch (value)
+            if (token == null) return null;
+
+            switch (token.Type)
             {
-                case null:
-                    sb.Append("null");
-                    break;
-                case bool b:
-                    sb.Append(b ? "true" : "false");
-                    break;
-                case int i:
-                    sb.Append(i);
-                    break;
-                case long l:
-                    sb.Append(l);
-                    break;
-                case double d:
-                    sb.Append(d);
-                    break;
-                case string s:
-                    sb.Append('"');
-                    sb.Append(s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r"));
-                    sb.Append('"');
-                    break;
-                case Dictionary<string, object> dict:
-                    sb.Append('{');
-                    var first = true;
-                    foreach (var kv in dict)
+                case JTokenType.Object:
+                {
+                    var dict = new Dictionary<string, object>();
+                    foreach (var prop in ((JObject)token).Properties())
                     {
-                        // result 字段必须保留（即使是 null），其他 null 值跳过
-                        if (kv.Value == null && kv.Key != "result") continue;
-                        if (!first) sb.Append(',');
-                        first = false;
-                        sb.Append('"');
-                        sb.Append(kv.Key);
-                        sb.Append("\":");
-                        SerializeValue(sb, kv.Value);
+                        dict[prop.Name] = ToPlainObject(prop.Value);
                     }
-                    sb.Append('}');
-                    break;
-                case System.Collections.IList list:
-                    sb.Append('[');
-                    for (int i = 0; i < list.Count; i++)
+                    return dict;
+                }
+                case JTokenType.Array:
+                {
+                    var list = new List<object>();
+                    foreach (var item in (JArray)token)
                     {
-                        if (i > 0) sb.Append(',');
-                        SerializeValue(sb, list[i]);
+                        list.Add(ToPlainObject(item));
                     }
-                    sb.Append(']');
-                    break;
+                    return list.ToArray();
+                }
+                case JTokenType.Integer:
+                    return token.Value<long>();
+                case JTokenType.Float:
+                    return token.Value<double>();
+                case JTokenType.Boolean:
+                    return token.Value<bool>();
+                case JTokenType.String:
+                    return token.Value<string>();
+                case JTokenType.Null:
+                case JTokenType.Undefined:
+                    return null;
                 default:
-                    sb.Append('"');
-                    sb.Append(value.ToString());
-                    sb.Append('"');
-                    break;
+                    return token.ToString();
             }
         }
 
@@ -705,3 +593,16 @@ namespace Azathrix.MiniPanda.LSP
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

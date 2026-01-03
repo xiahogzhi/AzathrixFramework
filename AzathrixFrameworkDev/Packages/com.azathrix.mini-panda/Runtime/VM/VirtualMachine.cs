@@ -700,6 +700,10 @@ namespace Azathrix.MiniPanda.VM
         /// </remarks>
         private (byte[] data, string fullPath) DefaultLoadFile(string path)
         {
+            // 安全检查：防止路径遍历攻击
+            if (path.Contains("..") || Path.IsPathRooted(path))
+                return (null, null);
+
             foreach (var ext in new[] {".mpbc", ".panda"})
             {
                 var fullPath = path + ext;

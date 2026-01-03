@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -92,7 +92,7 @@ namespace Azathrix.MiniPanda.LSP
         /// </summary>
         public void OpenDocument(string uri, string content)
         {
-            var info = new DocumentInfo { Uri = uri, Content = content };
+            var info = new DocumentInfo { Uri = uri, Content = content, Lines = SplitLines(content) };
             AnalyzeDocument(info);
             _documents[uri] = info;
         }
@@ -105,6 +105,7 @@ namespace Azathrix.MiniPanda.LSP
             if (_documents.TryGetValue(uri, out var info))
             {
                 info.Content = content;
+                info.Lines = SplitLines(content);
                 AnalyzeDocument(info);
             }
             else
@@ -130,7 +131,7 @@ namespace Azathrix.MiniPanda.LSP
 
             if (!_documents.TryGetValue(uri, out var doc)) return items;
 
-            var line = GetLine(doc.Content, position.Line);
+            var line = GetLine(doc, position.Line);
             var prefix = GetWordAtPosition(line, position.Character);
             var context = GetCompletionContext(line, position.Character);
 
@@ -197,7 +198,7 @@ namespace Azathrix.MiniPanda.LSP
         {
             if (!_documents.TryGetValue(uri, out var doc)) return null;
 
-            var line = GetLine(doc.Content, position.Line);
+            var line = GetLine(doc, position.Line);
             var word = GetWordAtPosition(line, position.Character);
             if (string.IsNullOrEmpty(word)) return null;
 
@@ -240,7 +241,7 @@ namespace Azathrix.MiniPanda.LSP
         {
             if (!_documents.TryGetValue(uri, out var doc)) return null;
 
-            var line = GetLine(doc.Content, position.Line);
+            var line = GetLine(doc, position.Line);
             var word = GetWordAtPosition(line, position.Character);
             if (string.IsNullOrEmpty(word)) return null;
 
@@ -318,7 +319,7 @@ namespace Azathrix.MiniPanda.LSP
         {
             if (!_documents.TryGetValue(uri, out var doc)) return null;
 
-            var line = GetLine(doc.Content, position.Line);
+            var line = GetLine(doc, position.Line);
             var funcName = GetFunctionNameAtPosition(line, position.Character);
             if (string.IsNullOrEmpty(funcName)) return null;
 
@@ -462,9 +463,14 @@ namespace Azathrix.MiniPanda.LSP
             }
         }
 
-        private string GetLine(string content, int lineNumber)
+        private static string[] SplitLines(string content)
         {
-            var lines = content.Split('\n');
+            return string.IsNullOrEmpty(content) ? Array.Empty<string>() : content.Split('\n');
+        }
+
+        private string GetLine(DocumentInfo doc, int lineNumber)
+        {
+            var lines = doc.Lines ?? Array.Empty<string>();
             return lineNumber < lines.Length ? lines[lineNumber] : "";
         }
 
@@ -602,8 +608,13 @@ namespace Azathrix.MiniPanda.LSP
         {
             public string Uri { get; set; }
             public string Content { get; set; }
+            public string[] Lines { get; set; } = Array.Empty<string>();
             public List<DocumentSymbol> Symbols { get; } = new List<DocumentSymbol>();
             public List<Diagnostic> Diagnostics { get; } = new List<Diagnostic>();
         }
     }
 }
+
+
+
+

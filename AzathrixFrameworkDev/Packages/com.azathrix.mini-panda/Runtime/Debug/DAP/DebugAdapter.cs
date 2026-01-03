@@ -1,7 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Azathrix.MiniPanda.Core;
 using Azathrix.MiniPanda.VM;
 
@@ -10,7 +12,7 @@ namespace Azathrix.MiniPanda.Debug.DAP
     /// <summary>
     /// MiniPanda DAP 调试适配器
     /// </summary>
-    public class DebugAdapter
+    public class DebugAdapter : IDisposable
     {
         private readonly VirtualMachine _vm;
         private readonly Debugger _debugger;
@@ -96,21 +98,37 @@ namespace Azathrix.MiniPanda.Debug.DAP
             _running = false;
         }
 
+        public void Dispose()
+        {
+            Stop();
+            _configurationDoneEvent?.Dispose();
+            _launchEvent?.Dispose();
+            _breakpointsSetEvent?.Dispose();
+        }
+
         private Request ReadMessage()
         {
             try
             {
-                // 读取 Content-Length 头
-                var headerLine = ReadLine();
-                if (string.IsNullOrEmpty(headerLine)) return null;
+                int length = -1;
 
-                if (!headerLine.StartsWith("Content-Length:"))
-                    return null;
+                // 读取所有头部，直到空行
+                while (true)
+                {
+                    var line = ReadLine();
+                    if (line == null) return null;
+                    if (line.Length == 0) break;
 
-                var length = int.Parse(headerLine.Substring(15).Trim());
+                    if (line.StartsWith("Content-Length:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        length = int.Parse(line.Substring(15).Trim());
+                        // 防止恶意客户端发送超大值导致内存耗尽
+                        if (length > 10 * 1024 * 1024) // 10MB 上限
+                            return null;
+                    }
+                }
 
-                // 跳过空行
-                ReadLine();
+                if (length < 0) return null;
 
                 // 读取 JSON 内容
                 var buffer = new byte[length];
@@ -125,8 +143,9 @@ namespace Azathrix.MiniPanda.Debug.DAP
                 var json = Encoding.UTF8.GetString(buffer);
                 return ParseRequest(json);
             }
-            catch
+            catch (Exception ex)
             {
+                UnityEngine.Debug.LogWarning($"[MiniPanda DAP] ReadMessage error: {ex.Message}");
                 return null;
             }
         }
@@ -134,9 +153,13 @@ namespace Azathrix.MiniPanda.Debug.DAP
         private string ReadLine()
         {
             var sb = new StringBuilder();
-            int b;
-            while ((b = _input.ReadByte()) != -1)
+            while (true)
             {
+                var b = _input.ReadByte();
+                if (b == -1)
+                {
+                    return sb.Length == 0 ? null : sb.ToString();
+                }
                 if (b == '\r')
                 {
                     _input.ReadByte(); // 跳过 \n
@@ -150,18 +173,27 @@ namespace Azathrix.MiniPanda.Debug.DAP
 
         private Request ParseRequest(string json)
         {
-            // 简单 JSON 解析（实际项目应使用 JSON 库）
-            var request = new Request();
-            request.seq = ExtractInt(json, "seq");
-            request.command = ExtractString(json, "command");
-            request.arguments = ExtractArguments(json);
+            if (string.IsNullOrEmpty(json)) return null;
+
+            var obj = JObject.Parse(json);
+            var request = new Request
+            {
+                seq = obj.Value<int?>("seq") ?? 0,
+                command = obj.Value<string>("command"),
+                arguments = ToDictionary(obj["arguments"])
+            };
             return request;
         }
+
+        private static readonly JsonSerializerSettings JsonSettings = new JsonSerializerSettings
+        {
+            NullValueHandling = NullValueHandling.Ignore
+        };
 
         private void SendMessage(ProtocolMessage message)
         {
             message.seq = _seq++;
-            var json = SerializeMessage(message);
+            var json = JsonConvert.SerializeObject(message, JsonSettings);
             var bytes = Encoding.UTF8.GetBytes(json);
             var header = $"Content-Length: {bytes.Length}\r\n\r\n";
             var headerBytes = Encoding.UTF8.GetBytes(header);
@@ -670,234 +702,64 @@ namespace Azathrix.MiniPanda.Debug.DAP
             return _vm.FrameDepth;
         }
 
-        // 简单 JSON 解析辅助方法
-        private static int ExtractInt(string json, string key)
+        // JSON 解析辅助方法（基于 Newtonsoft）
+        private static Dictionary<string, object> ToDictionary(JToken token)
         {
-            var pattern = $"\"{key}\":";
-            var idx = json.IndexOf(pattern);
-            if (idx < 0) return 0;
-            idx += pattern.Length;
-            while (idx < json.Length && char.IsWhiteSpace(json[idx])) idx++;
-            var end = idx;
-            while (end < json.Length && (char.IsDigit(json[end]) || json[end] == '-')) end++;
-            return int.TryParse(json.Substring(idx, end - idx), out var result) ? result : 0;
+            return ToPlainObject(token) as Dictionary<string, object> ?? new Dictionary<string, object>();
         }
 
-        private static string ExtractString(string json, string key)
+        private static object ToPlainObject(JToken token)
         {
-            var pattern = $"\"{key}\":\"";
-            var idx = json.IndexOf(pattern);
-            if (idx < 0) return null;
-            idx += pattern.Length;
-            var end = json.IndexOf('"', idx);
-            return end > idx ? json.Substring(idx, end - idx) : null;
-        }
+            if (token == null) return null;
 
-        private static Dictionary<string, object> ExtractArguments(string json)
-        {
-            // 查找 "arguments" 字段
-            var pattern = "\"arguments\":";
-            var idx = json.IndexOf(pattern);
-            if (idx < 0) return new Dictionary<string, object>();
-            idx += pattern.Length;
-            while (idx < json.Length && char.IsWhiteSpace(json[idx])) idx++;
-            if (idx >= json.Length || json[idx] != '{') return new Dictionary<string, object>();
-            return ParseJsonObject(json, ref idx);
-        }
-
-        private static Dictionary<string, object> ParseJsonObject(string json, ref int idx)
-        {
-            var result = new Dictionary<string, object>();
-            idx++; // skip '{'
-            SkipWhitespace(json, ref idx);
-
-            while (idx < json.Length && json[idx] != '}')
+            switch (token.Type)
             {
-                SkipWhitespace(json, ref idx);
-                if (json[idx] == '}') break;
-
-                // 解析 key
-                var key = ParseJsonString(json, ref idx);
-                SkipWhitespace(json, ref idx);
-                idx++; // skip ':'
-                SkipWhitespace(json, ref idx);
-
-                // 解析 value
-                var value = ParseJsonValue(json, ref idx);
-                result[key] = value;
-
-                SkipWhitespace(json, ref idx);
-                if (json[idx] == ',') idx++;
-            }
-
-            if (idx < json.Length) idx++; // skip '}'
-            return result;
-        }
-
-        private static object ParseJsonValue(string json, ref int idx)
-        {
-            SkipWhitespace(json, ref idx);
-            if (idx >= json.Length) return null;
-
-            var c = json[idx];
-            if (c == '"') return ParseJsonString(json, ref idx);
-            if (c == '{') return ParseJsonObject(json, ref idx);
-            if (c == '[') return ParseJsonArray(json, ref idx);
-            if (c == 't' || c == 'f') return ParseJsonBool(json, ref idx);
-            if (c == 'n') { idx += 4; return null; }
-            if (char.IsDigit(c) || c == '-') return ParseJsonNumber(json, ref idx);
-            return null;
-        }
-
-        private static string ParseJsonString(string json, ref int idx)
-        {
-            idx++; // skip opening quote
-            var sb = new StringBuilder();
-            while (idx < json.Length && json[idx] != '"')
-            {
-                if (json[idx] == '\\' && idx + 1 < json.Length)
+                case JTokenType.Object:
                 {
-                    idx++;
-                    switch (json[idx])
+                    var dict = new Dictionary<string, object>();
+                    foreach (var prop in ((JObject)token).Properties())
                     {
-                        case 'n': sb.Append('\n'); break;
-                        case 'r': sb.Append('\r'); break;
-                        case 't': sb.Append('\t'); break;
-                        case '\\': sb.Append('\\'); break;
-                        case '"': sb.Append('"'); break;
-                        default: sb.Append(json[idx]); break;
+                        dict[prop.Name] = ToPlainObject(prop.Value);
                     }
+                    return dict;
                 }
-                else
+                case JTokenType.Array:
                 {
-                    sb.Append(json[idx]);
-                }
-                idx++;
-            }
-            if (idx < json.Length) idx++; // skip closing quote
-            return sb.ToString();
-        }
-
-        private static object[] ParseJsonArray(string json, ref int idx)
-        {
-            var list = new List<object>();
-            idx++; // skip '['
-            SkipWhitespace(json, ref idx);
-
-            while (idx < json.Length && json[idx] != ']')
-            {
-                list.Add(ParseJsonValue(json, ref idx));
-                SkipWhitespace(json, ref idx);
-                if (json[idx] == ',') idx++;
-                SkipWhitespace(json, ref idx);
-            }
-
-            if (idx < json.Length) idx++; // skip ']'
-            return list.ToArray();
-        }
-
-        private static bool ParseJsonBool(string json, ref int idx)
-        {
-            if (json.Substring(idx, 4) == "true") { idx += 4; return true; }
-            idx += 5; return false;
-        }
-
-        private static double ParseJsonNumber(string json, ref int idx)
-        {
-            var start = idx;
-            if (json[idx] == '-') idx++;
-            while (idx < json.Length && (char.IsDigit(json[idx]) || json[idx] == '.' || json[idx] == 'e' || json[idx] == 'E' || json[idx] == '+' || json[idx] == '-'))
-                idx++;
-            double.TryParse(json.Substring(start, idx - start), out var result);
-            return result;
-        }
-
-        private static void SkipWhitespace(string json, ref int idx)
-        {
-            while (idx < json.Length && char.IsWhiteSpace(json[idx])) idx++;
-        }
-
-        private static string SerializeMessage(ProtocolMessage message)
-        {
-            // 简化实现，实际应使用 JSON 库
-            var sb = new StringBuilder();
-            sb.Append("{");
-            sb.Append($"\"seq\":{message.seq},");
-            sb.Append($"\"type\":\"{message.type}\"");
-
-            if (message is Response response)
-            {
-                sb.Append($",\"request_seq\":{response.request_seq}");
-                sb.Append($",\"success\":{response.success.ToString().ToLower()}");
-                sb.Append($",\"command\":\"{response.command}\"");
-                if (response.message != null)
-                    sb.Append($",\"message\":\"{EscapeString(response.message)}\"");
-                if (response.body != null)
-                    sb.Append($",\"body\":{SerializeObject(response.body)}");
-            }
-            else if (message is Event evt)
-            {
-                sb.Append($",\"event\":\"{evt.@event}\"");
-                if (evt.body != null)
-                    sb.Append($",\"body\":{SerializeObject(evt.body)}");
-            }
-
-            sb.Append("}");
-            return sb.ToString();
-        }
-
-        private static string SerializeObject(object obj)
-        {
-            if (obj == null) return "null";
-            if (obj is bool b) return b.ToString().ToLower();
-            if (obj is int i) return i.ToString();
-            if (obj is string s) return $"\"{EscapeString(s)}\"";
-
-            // 使用反射序列化对象
-            var sb = new StringBuilder();
-            sb.Append("{");
-            var first = true;
-            foreach (var prop in obj.GetType().GetProperties())
-            {
-                var value = prop.GetValue(obj);
-                if (value == null) continue;
-
-                if (!first) sb.Append(",");
-                first = false;
-
-                var name = prop.Name;
-                if (name == "event") name = "@event"; // 特殊处理
-
-                sb.Append($"\"{name}\":");
-
-                if (value is bool bv)
-                    sb.Append(bv.ToString().ToLower());
-                else if (value is int iv)
-                    sb.Append(iv);
-                else if (value is string sv)
-                    sb.Append($"\"{EscapeString(sv)}\"");
-                else if (value is Array arr)
-                {
-                    sb.Append("[");
-                    for (int j = 0; j < arr.Length; j++)
+                    var list = new List<object>();
+                    foreach (var item in (JArray)token)
                     {
-                        if (j > 0) sb.Append(",");
-                        sb.Append(SerializeObject(arr.GetValue(j)));
+                        list.Add(ToPlainObject(item));
                     }
-                    sb.Append("]");
+                    return list.ToArray();
                 }
-                else
-                    sb.Append(SerializeObject(value));
+                case JTokenType.Integer:
+                    return token.Value<long>();
+                case JTokenType.Float:
+                    return token.Value<double>();
+                case JTokenType.Boolean:
+                    return token.Value<bool>();
+                case JTokenType.String:
+                    return token.Value<string>();
+                case JTokenType.Null:
+                case JTokenType.Undefined:
+                    return null;
+                default:
+                    return token.ToString();
             }
-            sb.Append("}");
-            return sb.ToString();
-        }
-
-        private static string EscapeString(string s)
-        {
-            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
         }
 
         #endregion
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+

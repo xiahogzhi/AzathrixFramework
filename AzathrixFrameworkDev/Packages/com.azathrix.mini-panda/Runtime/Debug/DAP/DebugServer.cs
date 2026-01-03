@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Sockets;
 using Azathrix.MiniPanda.VM;
@@ -12,6 +12,7 @@ namespace Azathrix.MiniPanda.Debug.DAP
     {
         private readonly VirtualMachine _vm;
         private TcpListener _listener;
+        private TcpClient _client;
         private System.Threading.Thread _listenThread;
         private DebugAdapter _adapter;
         private bool _running;
@@ -137,6 +138,8 @@ namespace Azathrix.MiniPanda.Debug.DAP
 
             _running = false;
             _adapter?.Stop();
+            _client?.Close();
+            _client = null;
             _listener?.Stop();
             _listenThread?.Join(1000);
 
@@ -174,6 +177,8 @@ namespace Azathrix.MiniPanda.Debug.DAP
         {
             UnityEngine.Debug.Log("[MiniPanda] Debug client connected");
 
+            _client = client;
+
             try
             {
                 var stream = client.GetStream();
@@ -197,6 +202,7 @@ namespace Azathrix.MiniPanda.Debug.DAP
                     finally
                     {
                         client.Close();
+                        _client = null;
                         _vm.Debugger = null;
                         _clientConnectedEvent.Reset();
                         ClientDisconnected?.Invoke(this, EventArgs.Empty);
@@ -219,6 +225,13 @@ namespace Azathrix.MiniPanda.Debug.DAP
         public void Dispose()
         {
             Stop();
+            _clientConnectedEvent?.Dispose();
+            _adapter?.Dispose();
         }
     }
 }
+
+
+
+
+

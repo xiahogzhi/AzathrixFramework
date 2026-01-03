@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+﻿import * as vscode from 'vscode';
 import * as Net from 'net';
 import { MiniPandaDebugSession } from './debugAdapter';
 import {
@@ -13,6 +13,7 @@ let retryTimer: NodeJS.Timeout | null = null;
 let shouldRetry = true;
 let activeSocket: Net.Socket | null = null;
 let isStarting = false; // 防止重复启动
+let startToken = 0; // 防止并发重连
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('[MiniPanda] Extension activating...');
@@ -59,6 +60,11 @@ export function deactivate(): Thenable<void> | undefined {
 
 function createConnection(host: string, port: number): Promise<StreamInfo> {
     return new Promise((resolve, reject) => {
+        if (activeSocket) {
+            activeSocket.destroy();
+            activeSocket = null;
+        }
+
         const socket = new Net.Socket();
         socket.setKeepAlive(true, 10000);
         socket.setNoDelay(true);
@@ -79,6 +85,12 @@ function createConnection(host: string, port: number): Promise<StreamInfo> {
             clearTimeout(timeout);
             socket.destroy();
             reject(err);
+        });
+
+        socket.on('close', () => {
+            if (activeSocket === socket) {
+                activeSocket = null;
+            }
         });
 
         socket.connect(port, host);
@@ -107,6 +119,7 @@ async function startLanguageClient(context: vscode.ExtensionContext) {
     }
 
     isStarting = true;
+    const myToken = ++startToken;
     currentContext = context;
     shouldRetry = true;
 
@@ -116,7 +129,7 @@ async function startLanguageClient(context: vscode.ExtensionContext) {
 
     const serverOptions = async (): Promise<StreamInfo> => {
         // 重试连接
-        while (shouldRetry) {
+        while (shouldRetry && myToken === startToken) {
             try {
                 return await createConnection(host, port);
             } catch (err) {
@@ -149,10 +162,10 @@ async function startLanguageClient(context: vscode.ExtensionContext) {
     // 监控客户端状态
     languageClient.onDidChangeState(e => {
         console.log(`[MiniPanda] Client state: ${State[e.oldState]} -> ${State[e.newState]}`);
-        if (e.newState === State.Stopped && shouldRetry) {
+        if (e.newState === State.Stopped && shouldRetry && !isStarting) {
             console.log('[MiniPanda] Language client stopped, restarting...');
             setTimeout(() => {
-                if (shouldRetry && currentContext) {
+                if (shouldRetry && currentContext && !isStarting) {
                     startLanguageClient(currentContext);
                 }
             }, 3000);
@@ -231,3 +244,10 @@ class MiniPandaConfigurationProvider implements vscode.DebugConfigurationProvide
         return config;
     }
 }
+
+
+
+
+
+
+
