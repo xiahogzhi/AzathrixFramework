@@ -1,0 +1,16 @@
+{
+    "name": "Azathrix.Panda.Samples",
+    "rootNamespace": "",
+    "references": [
+        "GUID:e785c54463df6734a99d3fe6616a4fc8"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

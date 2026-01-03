@@ -48,14 +48,14 @@ namespace Azathrix.MiniPanda.VM
                     sb.AppendLine("");
                     foreach (var variable in vm.GetStackTrace())
                     {
-                        sb.AppendLine($"\t{variable.Function} (at {variable.File}:{variable.Line})");
+                        sb.AppendLine($"\t{variable.Name} (at {variable.File}:{variable.Line})");
                     }
-                    Debug.Log(sb.ToString());
+                    UnityEngine.Debug.Log(sb.ToString());
                     sb.Clear();
                 }
                 else
                 {
-                    Debug.Log(msg);
+                    UnityEngine.Debug.Log(msg);
                 }
                 return Value.Null;
             })));
@@ -784,7 +784,7 @@ namespace Azathrix.MiniPanda.VM
                     sb.Append(args[i].AsString());
                 }
                 var location = vm.GetCurrentLocation();
-                Debug.Log($"[TRACE] {sb} (at {location})");
+                UnityEngine.Debug.Log($"[TRACE] {sb} (at {location})");
                 return Value.Null;
             })));
 
@@ -798,7 +798,7 @@ namespace Azathrix.MiniPanda.VM
                     sb.Append(args[i].AsString());
                 }
                 var location = vm.GetCurrentLocation();
-                Debug.Log($"[DEBUG] {sb} (at {location})");
+                UnityEngine.Debug.Log($"[DEBUG] {sb} (at {location})");
                 return Value.Null;
             })));
 
@@ -809,7 +809,7 @@ namespace Azathrix.MiniPanda.VM
                 var stack = vm.GetStackTrace();
                 foreach (var frame in stack)
                 {
-                    sb.AppendLine($"  at {frame.Function} ({frame.File}:{frame.Line})");
+                    sb.AppendLine($"  at {frame.Name} ({frame.File}:{frame.Line})");
                 }
                 return Value.FromObject(new MiniPandaString(sb.ToString()));
             })));

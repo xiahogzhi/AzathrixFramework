@@ -1,26 +1,38 @@
 {
   "name": "minipanda",
   "displayName": "MiniPanda",
-  "description": "MiniPanda scripting language support",
-  "version": "1.0.0",
+  "description": "MiniPanda scripting language support with debugging and IntelliSense",
+  "version": "1.1.0",
   "publisher": "InputName",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Debuggers"
   ],
   "icon": "icons/panda.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/azathrix/minipanda"
   },
+  "activationEvents": [
+    "onLanguage:minipanda",
+    "onDebug"
+  ],
+  "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
         "id": "minipanda",
-        "aliases": ["MiniPanda", "minipanda", "panda"],
-        "extensions": [".panda"],
+        "aliases": [
+          "MiniPanda",
+          "minipanda",
+          "panda"
+        ],
+        "extensions": [
+          ".panda"
+        ],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./icons/panda.png",
@@ -34,6 +46,137 @@
         "scopeName": "source.panda",
         "path": "./syntaxes/minipanda.tmLanguage.json"
       }
+    ],
+    "breakpoints": [
+      {
+        "language": "minipanda"
+      }
+    ],
+    "configuration": {
+      "title": "MiniPanda",
+      "properties": {
+        "minipanda.languageServer.host": {
+          "type": "string",
+          "default": "localhost",
+          "description": "Language server host"
+        },
+        "minipanda.languageServer.port": {
+          "type": "number",
+          "default": 4712,
+          "description": "Language server port"
+        },
+        "minipanda.debugServer.port": {
+          "type": "number",
+          "default": 4711,
+          "description": "Debug server port"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "minipanda.restartLanguageServer",
+        "title": "MiniPanda: Restart Language Server"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "minipanda",
+        "label": "MiniPanda Debug",
+        "languages": [
+          "minipanda"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Path to the MiniPanda script to debug (optional for remote debugging)",
+                "default": "${file}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Stop on entry",
+                "default": false
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory",
+                "default": "${workspaceFolder}"
+              },
+              "debugServer": {
+                "type": "number",
+                "description": "Debug server port (for attach mode)",
+                "default": 4711
+              }
+            }
+          },
+          "attach": {
+            "required": [
+              "port"
+            ],
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "Debug server port",
+                "default": 4711
+              },
+              "host": {
+                "type": "string",
+                "description": "Debug server host",
+                "default": "localhost"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "minipanda",
+            "request": "launch",
+            "name": "Debug MiniPanda Script",
+            "program": "${file}",
+            "stopOnEntry": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "MiniPanda: Launch",
+            "description": "Launch and debug a MiniPanda script",
+            "body": {
+              "type": "minipanda",
+              "request": "launch",
+              "name": "Debug MiniPanda",
+              "program": "^\"\\${file}\"",
+              "stopOnEntry": false
+            }
+          },
+          {
+            "label": "MiniPanda: Attach",
+            "description": "Attach to a running MiniPanda debug server",
+            "body": {
+              "type": "minipanda",
+              "request": "attach",
+              "name": "Attach to MiniPanda",
+              "port": 4711,
+              "host": "localhost"
+            }
+          }
+        ]
+      }
     ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@vscode/debugadapter": "^1.64.0",
+    "@vscode/debugprotocol": "^1.64.0",
+    "vscode-languageclient": "^9.0.0"
   }
 }

@@ -7,10 +7,12 @@
     { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#keywords" },
+    { "include": "#builtins" },
     { "include": "#constants" },
     { "include": "#operators" },
     { "include": "#functions" },
     { "include": "#classes" },
+    { "include": "#enums" },
     { "include": "#variables" }
   ],
   "repository": {
@@ -50,6 +52,10 @@
     "numbers": {
       "patterns": [
         {
+          "name": "constant.numeric.hex.panda",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        },
+        {
           "name": "constant.numeric.panda",
           "match": "\\b\\d+(\\.\\d+)?\\b"
         }
@@ -62,8 +68,16 @@
           "match": "\\b(if|else|while|for|in|return|break|continue)\\b"
         },
         {
+          "name": "keyword.control.exception.panda",
+          "match": "\\b(try|catch|finally|throw)\\b"
+        },
+        {
           "name": "keyword.declaration.panda",
-          "match": "\\b(var|func|class)\\b"
+          "match": "\\b(var|func|class|enum)\\b"
+        },
+        {
+          "name": "keyword.modifier.panda",
+          "match": "\\b(static|export)\\b"
         },
         {
           "name": "keyword.other.panda",
@@ -76,6 +90,18 @@
         {
           "name": "variable.language.super.panda",
           "match": "\\b(super)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.panda",
+          "match": "\\b(print|type|str|num|bool|abs|floor|ceil|round|sqrt|pow|min|max|len|push|pop|range|keys|values|contains|slice|join|split|time|random|randomInt|now|trace|debug|stacktrace|assert)\\b"
+        },
+        {
+          "name": "support.class.builtin.panda",
+          "match": "\\b(date|regex|json|_G)\\b"
         }
       ]
     },
@@ -102,6 +128,30 @@
           "match": "(&&|\\|\\||!)"
         },
         {
+          "name": "keyword.operator.nullcoalesce.panda",
+          "match": "\\?\\?"
+        },
+        {
+          "name": "keyword.operator.optional.panda",
+          "match": "\\?\\.|\\?\\["
+        },
+        {
+          "name": "keyword.operator.ternary.panda",
+          "match": "\\?|:"
+        },
+        {
+          "name": "keyword.operator.bitwise.panda",
+          "match": "(<<|>>|&|\\||\\^|~)"
+        },
+        {
+          "name": "keyword.operator.assignment.compound.panda",
+          "match": "(\\+=|-=|\\*=|/=|%=)"
+        },
+        {
+          "name": "keyword.operator.increment.panda",
+          "match": "(\\+\\+|--)"
+        },
+        {
           "name": "keyword.operator.arithmetic.panda",
           "match": "(\\+|-|\\*|/|%)"
         },
@@ -112,6 +162,10 @@
         {
           "name": "keyword.operator.arrow.panda",
           "match": "=>"
+        },
+        {
+          "name": "keyword.operator.spread.panda",
+          "match": "\\.\\.\\."
         }
       ]
     },
@@ -138,10 +192,23 @@
       "patterns": [
         {
           "name": "meta.class.panda",
-          "match": "\\b(class)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "match": "\\b(class)\\s+([a-zA-Z_][a-zA-Z0-9_]*)(\\s*:\\s*([a-zA-Z_][a-zA-Z0-9_]*))?",
           "captures": {
             "1": { "name": "keyword.declaration.class.panda" },
-            "2": { "name": "entity.name.class.panda" }
+            "2": { "name": "entity.name.class.panda" },
+            "4": { "name": "entity.other.inherited-class.panda" }
+          }
+        }
+      ]
+    },
+    "enums": {
+      "patterns": [
+        {
+          "name": "meta.enum.panda",
+          "match": "\\b(enum)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.enum.panda" },
+            "2": { "name": "entity.name.enum.panda" }
           }
         }
       ]

@@ -1,8 +1,10 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 using Azathrix.MiniPanda;
 using Azathrix.MiniPanda.Core;
+using Azathrix.MiniPanda.Debug.DAP;
 using Azathrix.MiniPanda.VM;
 using UnityEditor;
 
@@ -11,26 +13,49 @@ using UnityEditor;
 public class MiniPandaDemo : MonoBehaviour
 {
     private MiniPanda _panda;
+    private DebugServer ds;
+    private Task _task;
+    private string _samplesPath; // 在主线程获取
 
-    void Start()
-    {
-        _panda = new MiniPanda();
-        _panda.Start();
+   void Start()
+   {
+       // 在主线程获取路径（Unity API 只能在主线程调用）
+       _samplesPath = Path.GetDirectoryName(AssetDatabase.GetAssetPath(MonoScript.FromMonoBehaviour(this)));
 
+       _task = Task.Run(() =>
+       {
+           try
+           {
+               _panda = new MiniPanda();
+               _panda.Start();
+               ds = new DebugServer(_panda.VM);
+               ds.Start();
 
-        LoadModules();
+               // 等待调试器完全准备好（连接 + 断点设置 + launch）
+               ds.WaitForReady();
+               Debug.Log("调试器准备完成，开始执行脚本");
 
-        BasicExample();
-        FunctionExample();
-        ClassExample();
-        StaticMemberExample();
-        InteropExample();
-        ImportExample();
-    }
+               LoadModules();
+
+               // BasicExample();
+               // FunctionExample();
+               // ClassExample();
+               // StaticMemberExample();
+               // InteropExample();
+               ImportExample();
+           }
+           catch (Exception ex)
+           {
+               Debug.LogError($"[MiniPanda] 脚本执行异常: {ex}");
+           }
+       });
+   }
 
     void OnDestroy()
     {
+        ds?.Stop();
         _panda?.Shutdown();
+        _task.Dispose();
     }
 
     void RegisterUnityFunctions()
@@ -210,24 +235,25 @@ public class MiniPandaDemo : MonoBehaviour
 
     void LoadModules()
     {
-        var samplesPath = Path.GetDirectoryName(AssetDatabase.GetAssetPath(MonoScript.FromMonoBehaviour(this)));
-
-        var utilsPath = Path.Combine(samplesPath, "utils.panda");
+        var utilsPath = Path.Combine(_samplesPath, "utils.panda");
         if (File.Exists(utilsPath))
         {
-            _panda.LoadModule(File.ReadAllBytes(utilsPath), "utils", utilsPath);
+            var fullPath = Path.GetFullPath(utilsPath).Replace("\\", "/");
+            _panda.LoadModule(File.ReadAllBytes(utilsPath), "utils", fullPath);
         }
 
-        var vectorPath = Path.Combine(samplesPath, "math", "vector.panda");
+        var vectorPath = Path.Combine(_samplesPath, "math", "vector.panda");
         if (File.Exists(vectorPath))
         {
-            _panda.LoadModule(File.ReadAllBytes(vectorPath), "math.vector", vectorPath);
+            var fullPath = Path.GetFullPath(vectorPath).Replace("\\", "/");
+            _panda.LoadModule(File.ReadAllBytes(vectorPath), "math.vector", fullPath);
         }
 
-        var examplePath = Path.Combine(samplesPath, "example.panda");
+        var examplePath = Path.Combine(_samplesPath, "example.panda");
         if (File.Exists(examplePath))
         {
-            _panda.LoadModule(File.ReadAllBytes(examplePath), "example", "./" + examplePath.Replace("\\", "/"));
+            var fullPath = Path.GetFullPath(examplePath).Replace("\\", "/");
+            _panda.LoadModule(File.ReadAllBytes(examplePath), "example", fullPath);
         }
     }
 

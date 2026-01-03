@@ -25,6 +25,8 @@ namespace Azathrix.MiniPanda
 
         /// <summary>是否已启动</summary>
         public bool IsStarted => _started;
+        /// <summary>内部虚拟机实例（用于调试器）</summary>
+        public VirtualMachine VM => _vm;
         /// <summary>是否启用字节码缓存</summary>
         public bool CacheEnabled { get => _vm.CacheEnabled; set => _vm.CacheEnabled = value; }
         /// <summary>自定义文件加载器</summary>

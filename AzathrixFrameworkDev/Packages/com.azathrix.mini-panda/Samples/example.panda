@@ -17,12 +17,16 @@ for fruit in fruits {
     print("  - " + fruit)
 }
 
+
+
 // ========== 对象 ==========
 var config = {
     debug: true,
     maxFps: 60,
     volume: 0.8
 }
+
+
 
 print("配置: debug=" + config.debug + ", maxFps=" + config.maxFps)
 
@@ -42,6 +46,7 @@ print("斐波那契(10) = " + fibonacci(10))
 // ========== Lambda ==========
 var square = (x) => x * x
 var cube = (x) => x * x * x
+
 
 print("5 的平方 = " + square(5))
 print("3 的立方 = " + cube(3))
@@ -65,6 +70,9 @@ class Entity {
         return this.hp > 0
     }
 }
+
+var t = Entity()
+
 
 class Player : Entity {
     Player(name, level) {

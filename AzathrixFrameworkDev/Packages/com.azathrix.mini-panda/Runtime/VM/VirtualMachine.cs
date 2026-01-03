@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using Azathrix.MiniPanda.Compiler;
 using Azathrix.MiniPanda.Core;
+using Azathrix.MiniPanda.Debug;
 using Azathrix.MiniPanda.Exceptions;
 using Environment = Azathrix.MiniPanda.Core.Environment;
 
@@ -104,6 +105,10 @@ namespace Azathrix.MiniPanda.VM
         public FileLoader CustomLoader { get; set; }
         /// <summary>获取全局作用域</summary>
         public Environment GlobalScope => _globalScope;
+        /// <summary>调试器实例（可选）</summary>
+        public Debugger Debugger { get; set; }
+        /// <summary>当前调用帧深度（用于调试）</summary>
+        public int FrameDepth => _frameCount;
 
         /// <summary>
         /// 调用帧结构，保存函数调用的执行上下文
@@ -236,6 +241,68 @@ namespace Azathrix.MiniPanda.VM
             if (!_globalScope.Contains(name))
                 throw new MiniPandaRuntimeException($"Undefined global variable '{name}'");
             return _globalScope.Get(name);
+        }
+
+        #endregion
+
+        #region 调试支持
+
+        /// <summary>
+        /// 获取当前调用栈信息
+        /// </summary>
+        public StackFrameInfo[] GetStackTrace()
+        {
+            var frames = new List<StackFrameInfo>();
+            if (_frameCount == 0) return frames.ToArray();
+
+            // 调试器暂停时，IP 还没有递增，直接使用 IP；否则使用 IP - 1
+            var isPaused = Debugger?.IsPaused == true;
+            for (int i = _frameCount - 1; i >= 0; i--)
+            {
+                var frame = _frames[i];
+                var name = frame.Function?.Prototype?.FullName ?? "<main>";
+                var file = frame.Bytecode?.SourceFile ?? "<script>";
+                // UnityEngine.Debug.Log($"[GetStackTrace] Frame {i}: name={name}, file={file}, Bytecode={frame.Bytecode != null}, SourceFile={frame.Bytecode?.SourceFile}");
+                var line = 1;
+                var ip = isPaused ? frame.IP : frame.IP - 1;
+                if (ip >= 0 && ip < frame.Bytecode?.Lines.Count)
+                {
+                    line = frame.Bytecode.Lines[ip];
+                }
+
+                frames.Add(new StackFrameInfo
+                {
+                    Id = i,
+                    Name = name,
+                    File = file,
+                    Line = line,
+                    Column = 1
+                });
+            }
+            return frames.ToArray();
+        }
+
+        /// <summary>
+        /// 获取指定帧的局部变量
+        /// </summary>
+        public Dictionary<string, Value> GetLocalVariables(int frameId)
+        {
+            var result = new Dictionary<string, Value>();
+            if (frameId < 0 || frameId >= _frameCount) return result;
+
+            var frame = _frames[frameId];
+            var func = frame.Function;
+            if (func?.Prototype == null) return result;
+
+            // 获取局部变量名（需要编译器提供调试信息）
+            // 目前简化实现，返回栈上的值
+            var stackBase = frame.StackBase;
+            for (int i = 0; i < func.Prototype.Arity && stackBase + i < _stackTop; i++)
+            {
+                result[$"arg{i}"] = _stack[stackBase + i];
+            }
+
+            return result;
         }
 
         #endregion
@@ -529,12 +596,16 @@ namespace Azathrix.MiniPanda.VM
         /// </summary>
         /// <param name="path">文件路径</param>
         /// <returns>执行结果</returns>
-        public Value RunFile(string path)
+        public Value RunFile(string path, string scopeName = "main", bool clearScope = true)
         {
             var (data, fullPath) = LoadFile(path);
             if (data == null)
                 throw new MiniPandaRuntimeException($"Cannot load file: {path}");
-            return Run(data);
+
+            var compiled = CompileData(data, fullPath ?? path);
+            var scope = GetScope(scopeName);
+            if (clearScope) scope.Clear();
+            return RunBytecode(compiled.Bytecode, scope);
         }
 
         /// <summary>
@@ -667,6 +738,9 @@ namespace Azathrix.MiniPanda.VM
         /// </remarks>
         public Value RunBytecode(Bytecode bytecode, Environment scope)
         {
+            // 调试日志
+            // UnityEngine.Debug.Log($"[MiniPanda VM] RunBytecode: Debugger={Debugger != null}, Enabled={Debugger?.Enabled}, SourceFile={bytecode.SourceFile}");
+
             // 重置 VM 状态
             _stackTop = 0;
             _frameCount = 0;
@@ -848,9 +922,6 @@ namespace Azathrix.MiniPanda.VM
             }
         }
 
-        /// <summary>获取当前栈跟踪</summary>
-        public List<Exceptions.StackFrame> GetStackTrace() => GetPandaStackTrace();
-
         /// <summary>
         /// 获取当前执行位置
         /// </summary>
@@ -902,9 +973,37 @@ namespace Azathrix.MiniPanda.VM
         /// </remarks>
         private Value ExecuteInternal(ref CallFrame frame)
         {
+            // 上一次检查的行号（避免同一行重复触发断点）
+            int lastDebugLine = -1;
+
             // 主执行循环
             while (true)
             {
+                // 调试钩子：检查断点和单步执行
+                if (Debugger != null && Debugger.Enabled)
+                {
+                    var ip = frame.IP;
+                    if (ip < frame.Bytecode.Lines.Count)
+                    {
+                        var line = frame.Bytecode.Lines[ip];
+                        if (line != lastDebugLine)
+                        {
+                            lastDebugLine = line;
+                            var file = frame.Bytecode.SourceFile ?? "<script>";
+                            if (Debugger.ShouldStop(file, line, _frameCount, out var reason))
+                            {
+                                // UnityEngine.Debug.Log($"[MiniPanda VM] Stopping at {file}:{line}, reason={reason}");
+                                Debugger.OnStopped(reason, file, line);
+                                // 等待调试器继续
+                                while (Debugger.IsPaused)
+                                {
+                                    System.Threading.Thread.Sleep(10);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // 读取下一条指令
                 var op = (Opcode) frame.Bytecode.Code[frame.IP++];
 
