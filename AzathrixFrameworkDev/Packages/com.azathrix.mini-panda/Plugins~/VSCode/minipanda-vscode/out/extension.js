@@ -39,12 +39,22 @@ const vscode = __importStar(require("vscode"));
 const Net = __importStar(require("net"));
 const debugAdapter_1 = require("./debugAdapter");
 const node_1 = require("vscode-languageclient/node");
+// 静默错误处理器
+class SilentErrorHandler {
+    error(_error, _message, _count) {
+        return { action: node_1.ErrorAction.Continue, handled: true };
+    }
+    closed() {
+        return { action: node_1.CloseAction.DoNotRestart, handled: true };
+    }
+}
 let languageClient = null;
 let retryTimer = null;
 let shouldRetry = true;
 let activeSocket = null;
-let isStarting = false; // 防止重复启动
-let startToken = 0; // 防止并发重连
+let isStarting = false;
+let startToken = 0;
+let outputChannel = null;
 function activate(context) {
     console.log('[MiniPanda] Extension activating...');
     // 注册调试适配器工厂
@@ -54,6 +64,9 @@ function activate(context) {
     // 注册调试配置提供器
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('minipanda', new MiniPandaConfigurationProvider()));
     console.log('[MiniPanda] Debug configuration provider registered');
+    // 注册表达式提供器（用于 hover 时获取完整的成员访问表达式）
+    context.subscriptions.push(vscode.languages.registerEvaluatableExpressionProvider('minipanda', new MiniPandaEvaluatableExpressionProvider()));
+    console.log('[MiniPanda] Evaluatable expression provider registered');
     // 启动语言客户端
     startLanguageClient(context);
     // 注册命令
@@ -110,22 +123,15 @@ function createConnection(host, port) {
 }
 let currentContext = null;
 async function startLanguageClient(context) {
-    // 防止重复启动
-    if (isStarting) {
-        console.log('[MiniPanda] Already starting, skip');
+    if (isStarting)
         return;
-    }
-    // 先停止旧的客户端
     if (languageClient) {
-        console.log('[MiniPanda] Stopping old client before restart');
         const oldClient = languageClient;
         languageClient = null;
         try {
             await oldClient.stop();
         }
-        catch (e) {
-            // 忽略停止错误
-        }
+        catch (e) { }
     }
     isStarting = true;
     const myToken = ++startToken;
@@ -135,49 +141,48 @@ async function startLanguageClient(context) {
     const port = config.get('languageServer.port', 4712);
     const host = config.get('languageServer.host', 'localhost');
     const serverOptions = async () => {
-        // 重试连接
         while (shouldRetry && myToken === startToken) {
             try {
                 return await createConnection(host, port);
             }
             catch (err) {
-                console.log(`[MiniPanda] Connection failed, retrying in 3s...`);
                 await new Promise(r => setTimeout(r, 3000));
             }
         }
         throw new Error('Connection cancelled');
     };
+    // 复用 output channel
+    if (!outputChannel) {
+        outputChannel = vscode.window.createOutputChannel('MiniPanda Language Server');
+    }
     const clientOptions = {
         documentSelector: [{ scheme: 'file', language: 'minipanda' }],
         synchronize: {
             fileEvents: vscode.workspace.createFileSystemWatcher('**/*.panda')
         },
-        outputChannelName: 'MiniPanda Language Server',
-        initializationFailedHandler: (error) => {
-            console.log('[MiniPanda] Initialization failed:', error);
-            return false;
-        }
+        outputChannel: outputChannel,
+        revealOutputChannelOn: node_1.RevealOutputChannelOn.Never,
+        initializationFailedHandler: () => false,
+        errorHandler: new SilentErrorHandler()
     };
     languageClient = new node_1.LanguageClient('minipanda', 'MiniPanda Language Server', serverOptions, clientOptions);
-    // 监控客户端状态
     languageClient.onDidChangeState(e => {
-        console.log(`[MiniPanda] Client state: ${node_1.State[e.oldState]} -> ${node_1.State[e.newState]}`);
+        if (e.newState === node_1.State.Running) {
+            vscode.window.showInformationMessage('[MiniPanda] Language server connected');
+        }
         if (e.newState === node_1.State.Stopped && shouldRetry && !isStarting) {
-            console.log('[MiniPanda] Language client stopped, restarting...');
             setTimeout(() => {
                 if (shouldRetry && currentContext && !isStarting) {
                     startLanguageClient(currentContext);
                 }
-            }, 3000);
+            }, 5000);
         }
     });
-    console.log('[MiniPanda] Starting language client...');
     try {
         await languageClient.start();
-        console.log('[MiniPanda] Language client started successfully, state:', node_1.State[languageClient.state]);
     }
     catch (err) {
-        console.log('[MiniPanda] Failed to start language client:', err);
+        // 静默
     }
     finally {
         isStarting = false;
@@ -232,6 +237,52 @@ class MiniPandaConfigurationProvider {
             }
         }
         return config;
+    }
+}
+// 表达式提供器：用于 hover 时获取完整的成员访问表达式（如 config.debug）
+class MiniPandaEvaluatableExpressionProvider {
+    provideEvaluatableExpression(document, position, token) {
+        const line = document.lineAt(position.line).text;
+        // 从光标位置向左右扩展，找到完整的标识符链（支持 a.b.c 格式）
+        let start = position.character;
+        let end = position.character;
+        // 向左扩展
+        while (start > 0) {
+            const ch = line[start - 1];
+            if (/[\w.]/.test(ch)) {
+                start--;
+            }
+            else {
+                break;
+            }
+        }
+        // 向右扩展
+        while (end < line.length) {
+            const ch = line[end];
+            if (/[\w]/.test(ch)) {
+                end++;
+            }
+            else {
+                break;
+            }
+        }
+        // 提取表达式
+        let expression = line.substring(start, end);
+        // 去掉开头的点（如果有）
+        if (expression.startsWith('.')) {
+            expression = expression.substring(1);
+            start++;
+        }
+        // 去掉结尾的点（如果有）
+        if (expression.endsWith('.')) {
+            expression = expression.substring(0, expression.length - 1);
+            end--;
+        }
+        if (!expression || expression.length === 0) {
+            return undefined;
+        }
+        const range = new vscode.Range(position.line, start, position.line, end);
+        return new vscode.EvaluatableExpression(range, expression);
     }
 }
 //# sourceMappingURL=extension.js.map

@@ -12,6 +12,8 @@ namespace Azathrix.MiniPanda.Compiler
         public string SourceFile { get; set; }
         /// <summary>导出的符号名称列表</summary>
         public HashSet<string> Exports { get; } = new HashSet<string>();
+        /// <summary>局部变量名列表（调试用）</summary>
+        public List<string> LocalNames { get; set; } = new List<string>();
 
         // Deduplicate strings and numbers to reduce constant table size.
         private readonly Dictionary<string, int> _stringPool = new Dictionary<string, int>();
@@ -227,6 +229,8 @@ namespace Azathrix.MiniPanda.Compiler
         public string RestParam { get; set; }  // Rest parameter name (null if none)
         public Bytecode Code { get; set; }
         public int UpvalueCount { get; set; }
+        /// <summary>局部变量名列表（调试用）</summary>
+        public List<string> LocalNames { get; set; } = new List<string>();
 
         public string FullName => string.IsNullOrEmpty(ClassName) ? Name : $"{ClassName}.{Name}";
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -17,39 +18,39 @@ public class MiniPandaDemo : MonoBehaviour
     private Task _task;
     private string _samplesPath; // 在主线程获取
 
-   void Start()
-   {
-       // 在主线程获取路径（Unity API 只能在主线程调用）
-       _samplesPath = Path.GetDirectoryName(AssetDatabase.GetAssetPath(MonoScript.FromMonoBehaviour(this)));
+    void Start()
+    {
+        // 在主线程获取路径（Unity API 只能在主线程调用）
+        _samplesPath = Path.GetDirectoryName(AssetDatabase.GetAssetPath(MonoScript.FromMonoBehaviour(this)));
 
-       _task = Task.Run(() =>
-       {
-           try
-           {
-               _panda = new MiniPanda();
-               _panda.Start();
-               ds = new DebugServer(_panda.VM);
-               ds.Start();
+        _task = Task.Run(() =>
+        {
+            try
+            {
+                _panda = new MiniPanda();
+                _panda.Start();
+                ds = new DebugServer(_panda.VM);
+                ds.Start();
 
-               // 等待调试器完全准备好（连接 + 断点设置 + launch）
-               ds.WaitForReady();
-               Debug.Log("调试器准备完成，开始执行脚本");
+                // 等待调试器完全准备好（连接 + 断点设置 + launch）
+                ds.WaitForReady();
+                Debug.Log("调试器准备完成，开始执行脚本");
 
-               LoadModules();
+                LoadModules();
 
-               // BasicExample();
-               // FunctionExample();
-               // ClassExample();
-               // StaticMemberExample();
-               // InteropExample();
-               ImportExample();
-           }
-           catch (Exception ex)
-           {
-               Debug.LogError($"[MiniPanda] 脚本执行异常: {ex}");
-           }
-       });
-   }
+                // BasicExample();
+                // FunctionExample();
+                // ClassExample();
+                // StaticMemberExample();
+                // InteropExample();
+                ImportExample();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MiniPanda] 脚本执行异常: {ex}");
+            }
+        });
+    }
 
     void OnDestroy()
     {
@@ -217,7 +218,7 @@ public class MiniPandaDemo : MonoBehaviour
             print(""最大玩家数: "" + maxPlayers)
         ");
 
-       var func =  _panda.Run<Func<float,float,float>>(@"
+        var func = _panda.Run<Func<float, float, float>>(@"
              func calculateDamage(baseDamage, multiplier) {
                 return baseDamage * multiplier
             }
@@ -227,7 +228,13 @@ public class MiniPandaDemo : MonoBehaviour
         var damage = func(100, 1.5f);
         Debug.Log($"计算伤害 (C# 调用): {damage}");
 
-        var result = _panda.Eval("hp - damage", new {hp = 100, damage = 30});
+        Dictionary<string, object> env = new ()
+        {
+            ["hp"] = 100,
+            ["damage"] = 30
+        };
+        
+        var result = _panda.Eval("hp - damage", env);
         Debug.Log($"剩余 HP: {result.AsNumber()}");
         damage = func(100, 1.5f);
         Debug.Log($"计算伤害 (C# 调用2): {damage}");
@@ -260,6 +267,20 @@ public class MiniPandaDemo : MonoBehaviour
     void ImportExample()
     {
         Debug.Log("=== 模块导入示例 ===");
+
+        //测试，玩家作用域
+        var scopeName = "player";
+
+        //属性设置的
+        var player = _panda.GetScope(scopeName);
+        player.Set("atk", Value.FromNumber(10));
+
+        //配置获取的
+        var damageExp = "atk * 1.5";
+
+        //直接计算
+        var dmg = _panda.Eval<float>(damageExp, scopeName);
+        Debug.Log("伤害:" + dmg);
 
         _panda.Run(@"
              import ""example""

@@ -77,7 +77,7 @@
         },
         {
           "name": "keyword.modifier.panda",
-          "match": "\\b(static|export)\\b"
+          "match": "\\b(static|export|global)\\b"
         },
         {
           "name": "keyword.other.panda",

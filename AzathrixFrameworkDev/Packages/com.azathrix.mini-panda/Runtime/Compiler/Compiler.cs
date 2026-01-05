@@ -145,6 +145,7 @@ namespace Azathrix.MiniPanda.Compiler
             Emit(Opcode.Null, 0);
             Emit(Opcode.Return, 0);
             _bytecode.SourceFile = SourceFile;
+            _bytecode.LocalNames = _locals.ConvertAll(l => l.Name);
             return _bytecode;
         }
 
@@ -227,7 +228,8 @@ namespace Azathrix.MiniPanda.Compiler
                 Arity = parameters.Count,
                 RestParam = restParam,
                 Code = compiler._bytecode,
-                UpvalueCount = compiler._upvalues.Count
+                UpvalueCount = compiler._upvalues.Count,
+                LocalNames = compiler._locals.ConvertAll(l => l.Name)
             };
 
             return new CompiledFunction
@@ -1360,6 +1362,7 @@ namespace Azathrix.MiniPanda.Compiler
         /// </summary>
         /// <remarks>
         /// 处理字符串插值，如 "Hello {name}!"
+        /// 插值表达式已在解析阶段预解析为 Expr
         /// </remarks>
         private void CompileStringExpr(StringExpr expr)
         {
@@ -1374,22 +1377,11 @@ namespace Azathrix.MiniPanda.Compiler
                     EmitShort((ushort)index, expr.Line);
                     partCount++;
                 }
-                else if (part is StringInterpolation interp)
+                else if (part is Expr interpExpr)
                 {
-                    // 插值表达式部分：解析并编译表达式
-                    var lexer = new Lexer.Lexer(interp.Expression);
-                    var tokens = lexer.Tokenize();
-                    var parser = new Parser.Parser(tokens);
-                    var stmts = parser.Parse();
-                    if (stmts.Count == 1 && stmts[0] is ExpressionStmt exprStmt)
-                    {
-                        CompileExpr(exprStmt.Expression);
-                        partCount++;
-                    }
-                    else
-                    {
-                        throw new CompilerException($"String interpolation must contain a single expression");
-                    }
+                    // 预解析的插值表达式，直接编译
+                    CompileExpr(interpExpr);
+                    partCount++;
                 }
             }
             // 构建最终字符串
@@ -1469,10 +1461,17 @@ namespace Azathrix.MiniPanda.Compiler
         /// 编译二元运算表达式
         /// </summary>
         /// <remarks>
-        /// 支持短路求值（&& 和 ||）
+        /// 支持短路求值（&& 和 ||）和常量折叠优化
         /// </remarks>
         private void CompileBinary(BinaryExpr expr)
         {
+            // 常量折叠：编译时计算常量表达式
+            if (TryFoldBinary(expr, out var result))
+            {
+                CompileLiteral(new LiteralExpr { Value = result, Line = expr.Line });
+                return;
+            }
+
             // && 短路求值：左边为假则跳过右边
             if (expr.Operator == TokenType.And)
             {
@@ -1528,6 +1527,13 @@ namespace Azathrix.MiniPanda.Compiler
         /// </summary>
         private void CompileUnary(UnaryExpr expr)
         {
+            // 常量折叠：编译时计算常量表达式
+            if (TryFoldUnary(expr, out var result))
+            {
+                CompileLiteral(new LiteralExpr { Value = result, Line = expr.Line });
+                return;
+            }
+
             CompileExpr(expr.Operand);
             switch (expr.Operator)
             {
@@ -1811,8 +1817,13 @@ namespace Azathrix.MiniPanda.Compiler
         /// <summary>
         /// 添加局部变量
         /// </summary>
+        /// <exception cref="CompilerException">局部变量超过 255 个时抛出</exception>
         private void AddLocal(string name)
         {
+            if (_locals.Count >= 255)
+            {
+                throw new CompilerException($"Too many local variables in function (max 255). Cannot add '{name}'.");
+            }
             _locals.Add(new Local { Name = name, Depth = _scopeDepth });
         }
 
@@ -1868,6 +1879,7 @@ namespace Azathrix.MiniPanda.Compiler
         /// <param name="index">在外层函数中的索引</param>
         /// <param name="isLocal">是否是外层函数的局部变量</param>
         /// <returns>上值索引</returns>
+        /// <exception cref="CompilerException">上值超过 255 个时抛出</exception>
         private int AddUpvalue(int index, bool isLocal)
         {
             // 检查是否已存在相同的上值
@@ -1876,8 +1888,111 @@ namespace Azathrix.MiniPanda.Compiler
                 if (_upvalues[i].Index == index && _upvalues[i].IsLocal == isLocal)
                     return i;
             }
+            if (_upvalues.Count >= 255)
+            {
+                throw new CompilerException("Too many closure variables (upvalues) in function (max 255).");
+            }
             _upvalues.Add(new Upvalue { Index = index, IsLocal = isLocal });
             return _upvalues.Count - 1;
+        }
+
+        // ==================== 常量折叠优化 ====================
+
+        /// <summary>
+        /// 尝试在编译时计算二元表达式
+        /// </summary>
+        private bool TryFoldBinary(BinaryExpr expr, out object result)
+        {
+            result = null;
+            if (!TryGetConstant(expr.Left, out var left) || !TryGetConstant(expr.Right, out var right))
+                return false;
+
+            // 数字运算
+            if (left is double l && right is double r)
+            {
+                switch (expr.Operator)
+                {
+                    case TokenType.Plus: result = l + r; return true;
+                    case TokenType.Minus: result = l - r; return true;
+                    case TokenType.Star: result = l * r; return true;
+                    case TokenType.Slash: result = l / r; return true;
+                    case TokenType.Percent: result = l % r; return true;
+                    case TokenType.Less: result = l < r; return true;
+                    case TokenType.LessEqual: result = l <= r; return true;
+                    case TokenType.Greater: result = l > r; return true;
+                    case TokenType.GreaterEqual: result = l >= r; return true;
+                    case TokenType.EqualEqual: result = l == r; return true;
+                    case TokenType.BangEqual: result = l != r; return true;
+                    case TokenType.BitAnd: result = (double)((long)l & (long)r); return true;
+                    case TokenType.BitOr: result = (double)((long)l | (long)r); return true;
+                    case TokenType.BitXor: result = (double)((long)l ^ (long)r); return true;
+                    case TokenType.LeftShift: result = (double)((long)l << (int)r); return true;
+                    case TokenType.RightShift: result = (double)((long)l >> (int)r); return true;
+                }
+            }
+
+            // 字符串拼接
+            if (left is string ls && right is string rs && expr.Operator == TokenType.Plus)
+            {
+                result = ls + rs;
+                return true;
+            }
+
+            // 布尔运算
+            if (left is bool lb && right is bool rb)
+            {
+                switch (expr.Operator)
+                {
+                    case TokenType.EqualEqual: result = lb == rb; return true;
+                    case TokenType.BangEqual: result = lb != rb; return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 尝试在编译时计算一元表达式
+        /// </summary>
+        private bool TryFoldUnary(UnaryExpr expr, out object result)
+        {
+            result = null;
+            if (!TryGetConstant(expr.Operand, out var operand))
+                return false;
+
+            switch (expr.Operator)
+            {
+                case TokenType.Minus when operand is double d:
+                    result = -d;
+                    return true;
+                case TokenType.Bang when operand is bool b:
+                    result = !b;
+                    return true;
+                case TokenType.BitNot when operand is double d:
+                    result = (double)(~(long)d);
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 尝试从表达式获取常量值（递归支持嵌套常量表达式）
+        /// </summary>
+        private bool TryGetConstant(Expr expr, out object value)
+        {
+            switch (expr)
+            {
+                case LiteralExpr lit:
+                    value = lit.Value;
+                    return true;
+                case UnaryExpr unary when TryFoldUnary(unary, out value):
+                    return true;
+                case BinaryExpr binary when TryFoldBinary(binary, out value):
+                    return true;
+                default:
+                    value = null;
+                    return false;
+            }
         }
 
         // ==================== 字节码生成辅助 ====================

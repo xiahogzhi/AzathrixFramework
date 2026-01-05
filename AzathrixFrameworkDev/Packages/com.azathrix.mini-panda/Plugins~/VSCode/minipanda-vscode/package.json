@@ -132,32 +132,23 @@
           {
             "type": "minipanda",
             "request": "launch",
-            "name": "Debug MiniPanda Script",
+            "name": "Debug MiniPanda",
             "program": "${file}",
-            "stopOnEntry": false
+            "stopOnEntry": false,
+            "debugServer": 4711
           }
         ],
         "configurationSnippets": [
           {
-            "label": "MiniPanda: Launch",
-            "description": "Launch and debug a MiniPanda script",
+            "label": "MiniPanda: Debug",
+            "description": "Debug MiniPanda script in Unity",
             "body": {
               "type": "minipanda",
               "request": "launch",
               "name": "Debug MiniPanda",
               "program": "^\"\\${file}\"",
-              "stopOnEntry": false
-            }
-          },
-          {
-            "label": "MiniPanda: Attach",
-            "description": "Attach to a running MiniPanda debug server",
-            "body": {
-              "type": "minipanda",
-              "request": "attach",
-              "name": "Attach to MiniPanda",
-              "port": 4711,
-              "host": "localhost"
+              "stopOnEntry": false,
+              "debugServer": 4711
             }
           }
         ]

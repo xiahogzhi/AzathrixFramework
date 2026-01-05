@@ -46,6 +46,12 @@ namespace Azathrix.MiniPanda
             _started = true;
         }
 
+        /// <summary>重置虚拟机状态（清除缓存和对象池）</summary>
+        public void Reset()
+        {
+            _vm.Reset();
+        }
+
         /// <summary>关闭引擎（重置状态）</summary>
         public void Shutdown()
         {
@@ -71,15 +77,35 @@ namespace Azathrix.MiniPanda
             => _vm.Run<T>(code, scopeName, clearScope);
 
         /// <summary>求值表达式</summary>
-        /// <param name="expression">表达式代码</param>
-        /// <param name="env">环境变量对象</param>
-        /// <param name="scopeName">作用域名称</param>
-        /// <param name="clearScope">是否清除作用域</param>
-        public Value Eval(string expression, object env = null, string scopeName = "main", bool clearScope = true)
+        public Value Eval(string expression, string scopeName = "main", bool clearScope = true)
+            => _vm.Eval(expression, scopeName, clearScope);
+
+        /// <summary>求值表达式（带 Environment 环境变量）</summary>
+        public Value Eval(string expression, Environment env, string scopeName = "main", bool clearScope = true)
+            => _vm.Eval(expression, env, scopeName, clearScope);
+
+        /// <summary>求值表达式（带 Dictionary 环境变量）</summary>
+        public Value Eval(string expression, Dictionary<string, object> env, string scopeName = "main", bool clearScope = true)
+            => _vm.Eval(expression, env, scopeName, clearScope);
+
+        /// <summary>求值表达式（带自定义环境提供者）</summary>
+        public Value Eval(string expression, IEnvironmentProvider env, string scopeName = "main", bool clearScope = true)
             => _vm.Eval(expression, env, scopeName, clearScope);
 
         /// <summary>求值表达式并转换返回值类型</summary>
-        public T Eval<T>(string expression, object env = null, string scopeName = "main", bool clearScope = true)
+        public T Eval<T>(string expression, string scopeName = "main", bool clearScope = true)
+            => _vm.Eval<T>(expression, scopeName, clearScope);
+
+        /// <summary>求值表达式并转换返回值类型（带 Environment 环境变量）</summary>
+        public T Eval<T>(string expression, Environment env, string scopeName = "main", bool clearScope = true)
+            => _vm.Eval<T>(expression, env, scopeName, clearScope);
+
+        /// <summary>求值表达式并转换返回值类型（带 Dictionary 环境变量）</summary>
+        public T Eval<T>(string expression, Dictionary<string, object> env, string scopeName = "main", bool clearScope = true)
+            => _vm.Eval<T>(expression, env, scopeName, clearScope);
+
+        /// <summary>求值表达式并转换返回值类型（带自定义环境提供者）</summary>
+        public T Eval<T>(string expression, IEnvironmentProvider env, string scopeName = "main", bool clearScope = true)
             => _vm.Eval<T>(expression, env, scopeName, clearScope);
 
         #endregion
@@ -126,8 +152,10 @@ namespace Azathrix.MiniPanda
 
         /// <summary>调用全局函数</summary>
         public Value Call(string funcName, params object[] args) => _vm.Call(funcName, args);
-        /// <summary>调用指定作用域的函数</summary>
-        public Value Call(object scope, string funcName, params object[] args) => _vm.Call(scope, funcName, args);
+        /// <summary>调用指定 Environment 作用域的函数</summary>
+        public Value Call(Environment scope, string funcName, params object[] args) => _vm.Call(scope, funcName, args);
+        /// <summary>调用指定 Dictionary 作用域的函数</summary>
+        public Value Call(Dictionary<string, object> scope, string funcName, params object[] args) => _vm.Call(scope, funcName, args);
 
         #endregion
 

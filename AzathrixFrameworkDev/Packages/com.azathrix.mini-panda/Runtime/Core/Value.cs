@@ -293,11 +293,11 @@ namespace Azathrix.MiniPanda.Core
                     typeof(Value).GetMethod("FromNumber"), converted);
             }
 
-            // string -> Value.FromObject(new MiniPandaString)
+            // string -> Value.FromObject(MiniPandaString.Create)
             if (paramType == typeof(string))
             {
-                var newStr = System.Linq.Expressions.Expression.New(
-                    typeof(MiniPandaString).GetConstructor(new[] { typeof(string) }), param);
+                var createMethod = typeof(MiniPandaString).GetMethod("Create", new[] { typeof(string) });
+                var newStr = System.Linq.Expressions.Expression.Call(createMethod, param);
                 return System.Linq.Expressions.Expression.Call(
                     typeof(Value).GetMethod("FromObject"), newStr);
             }
@@ -320,9 +320,9 @@ namespace Azathrix.MiniPanda.Core
                 long l => FromNumber(l),
                 float f => FromNumber(f),
                 double d => FromNumber(d),
-                string s => FromObject(new MiniPandaString(s)),
+                string s => FromObject(MiniPandaString.Create(s)),
                 Value v => v,
-                _ => FromObject(new MiniPandaString(arg.ToString()))
+                _ => FromObject(MiniPandaString.Create(arg.ToString()))
             };
         }
 
@@ -393,7 +393,7 @@ namespace Azathrix.MiniPanda.Core
         /// <summary>从 bool 隐式转换</summary>
         public static implicit operator Value(bool b) => FromBool(b);
         /// <summary>从 string 隐式转换</summary>
-        public static implicit operator Value(string s) => s == null ? Null : FromObject(new MiniPandaString(s));
+        public static implicit operator Value(string s) => s == null ? Null : FromObject(MiniPandaString.Create(s));
 
         #endregion
     }

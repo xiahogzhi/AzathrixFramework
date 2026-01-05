@@ -17,6 +17,8 @@ for fruit in fruits {
     print("  - " + fruit)
 }
 
+global var test = 1
+
 
 
 // ========== 对象 ==========
@@ -31,7 +33,7 @@ var config = {
 print("配置: debug=" + config.debug + ", maxFps=" + config.maxFps)
 
 // ========== 函数 ==========
-func greet(name) {
+global func greet(name) {
     return "你好, " + name + "!"
 }
 
@@ -52,7 +54,7 @@ print("5 的平方 = " + square(5))
 print("3 的立方 = " + cube(3))
 
 // ========== 类 ==========
-class Entity {
+global class Entity {
     Entity(name) {
         this.name = name
         this.hp = 100
@@ -71,16 +73,16 @@ class Entity {
     }
 }
 
-var t = Entity()
-
 
 class Player : Entity {
+
     Player(name, level) {
         super.Entity(name)
         this.level = level
         this.hp = 100 + level * 10
     }
 
+    //升级
     func levelUp() {
         this.level = this.level + 1
         this.hp = this.hp + 10
@@ -89,6 +91,8 @@ class Player : Entity {
 }
 
 var hero = Player("勇者", 1)
+
+
 print("创建玩家: " + hero.name + ", 等级: " + hero.level + ", HP: " + hero.hp)
 
 hero.takeDamage(30)
@@ -124,6 +128,9 @@ print("示例运行完成!")
 
 // 基本导入 - 文件作用域
 import "utils" as u
+
+
+
 print("Utils VERSION: " + u.VERSION)
 u.helper()
 print("clamp(15, 0, 10) = " + u.clamp(15, 0, 10))
@@ -131,6 +138,8 @@ print("lerp(0, 100, 0.5) = " + u.lerp(0, 100, 0.5))
 
 // 路径转换 - 点号转目录
 import "math.vector" as vec
+
+
 var v1 = vec.create(1, 2, 3)
 var v2 = vec.create(4, 5, 6)
 print("v1 = (" + v1.x + ", " + v1.y + ", " + v1.z + ")")
@@ -140,5 +149,4 @@ print("v1 + v2 = (" + v3.x + ", " + v3.y + ", " + v3.z + ")")
 
 print("dot(v1, v2) = " + vec.dot(v1, v2))
 print("length(v1) = " + vec.length(v1))
-
 

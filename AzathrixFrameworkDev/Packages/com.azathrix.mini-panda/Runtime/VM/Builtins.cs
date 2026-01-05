@@ -207,12 +207,12 @@ namespace Azathrix.MiniPanda.VM
                 if (v.As<MiniPandaObject>() is { } obj)
                 {
                     foreach (var key in obj.Fields.Keys)
-                        result.Push(Value.FromObject(new MiniPandaString(key)));
+                        result.Push(Value.FromObject(MiniPandaString.Create(key)));
                 }
                 else if (v.As<MiniPandaInstance>() is { } inst)
                 {
                     foreach (var key in inst.Fields.Keys)
-                        result.Push(Value.FromObject(new MiniPandaString(key)));
+                        result.Push(Value.FromObject(MiniPandaString.Create(key)));
                 }
                 return Value.FromObject(result);
             })));
@@ -272,7 +272,7 @@ namespace Azathrix.MiniPanda.VM
                     if (start < 0) start = str.Value.Length + start;
                     if (end < 0) end = str.Value.Length + end + 1;
                     end = Math.Min(end, str.Value.Length);
-                    return Value.FromObject(new MiniPandaString(str.Value.Substring(start, end - start)));
+                    return Value.FromObject(MiniPandaString.Create(str.Value.Substring(start, end - start)));
                 }
                 return Value.Null;
             })));
@@ -288,7 +288,7 @@ namespace Azathrix.MiniPanda.VM
                         if (i > 0) sb.Append(separator);
                         sb.Append(array.Get(i).AsString());
                     }
-                    return Value.FromObject(new MiniPandaString(sb.ToString()));
+                    return Value.FromObject(MiniPandaString.Create(sb.ToString()));
                 }
                 return Value.Null;
             })));
@@ -300,7 +300,7 @@ namespace Azathrix.MiniPanda.VM
                 {
                     var parts = s.Value.Split(new[] { sep.AsString() }, StringSplitOptions.None);
                     foreach (var part in parts)
-                        result.Push(Value.FromObject(new MiniPandaString(part)));
+                        result.Push(Value.FromObject(MiniPandaString.Create(part)));
                 }
                 return Value.FromObject(result);
             })));
@@ -366,7 +366,7 @@ namespace Azathrix.MiniPanda.VM
             {
                 var dt = DateTimeOffset.FromUnixTimeMilliseconds((long)ts.AsNumber()).LocalDateTime;
                 var format = fmt.IsNull ? "yyyy-MM-dd HH:mm:ss" : fmt.AsString();
-                return Value.FromObject(new MiniPandaString(dt.ToString(format)));
+                return Value.FromObject(MiniPandaString.Create(dt.ToString(format)));
             })));
 
             // Date.parse(str) - parse date string to timestamp (ms)
@@ -429,13 +429,13 @@ namespace Azathrix.MiniPanda.VM
                     if (!match.Success) return Value.Null;
 
                     var result = new MiniPandaObject();
-                    result.Set("value", Value.FromObject(new MiniPandaString(match.Value)));
+                    result.Set("value", Value.FromObject(MiniPandaString.Create(match.Value)));
                     result.Set("index", Value.FromNumber(match.Index));
 
                     var groups = new MiniPandaArray();
                     foreach (Group g in match.Groups)
                     {
-                        groups.Elements.Add(Value.FromObject(new MiniPandaString(g.Value)));
+                        groups.Elements.Add(Value.FromObject(MiniPandaString.Create(g.Value)));
                     }
                     result.Set("groups", Value.FromObject(groups));
 
@@ -458,13 +458,13 @@ namespace Azathrix.MiniPanda.VM
                     foreach (Match match in matches)
                     {
                         var result = new MiniPandaObject();
-                        result.Set("value", Value.FromObject(new MiniPandaString(match.Value)));
+                        result.Set("value", Value.FromObject(MiniPandaString.Create(match.Value)));
                         result.Set("index", Value.FromNumber(match.Index));
 
                         var groups = new MiniPandaArray();
                         foreach (Group g in match.Groups)
                         {
-                            groups.Elements.Add(Value.FromObject(new MiniPandaString(g.Value)));
+                            groups.Elements.Add(Value.FromObject(MiniPandaString.Create(g.Value)));
                         }
                         result.Set("groups", Value.FromObject(groups));
 
@@ -485,7 +485,7 @@ namespace Azathrix.MiniPanda.VM
                 try
                 {
                     var result = Regex.Replace(str.AsString(), pattern.AsString(), replacement.AsString());
-                    return Value.FromObject(new MiniPandaString(result));
+                    return Value.FromObject(MiniPandaString.Create(result));
                 }
                 catch
                 {
@@ -502,7 +502,7 @@ namespace Azathrix.MiniPanda.VM
                     var result = new MiniPandaArray();
                     foreach (var part in parts)
                     {
-                        result.Elements.Add(Value.FromObject(new MiniPandaString(part)));
+                        result.Elements.Add(Value.FromObject(MiniPandaString.Create(part)));
                     }
                     return Value.FromObject(result);
                 }
@@ -536,7 +536,7 @@ namespace Azathrix.MiniPanda.VM
 
             jsonObj.Set("stringify", Value.FromObject(NativeFunction.Create((Value v) =>
             {
-                return Value.FromObject(new MiniPandaString(StringifyJson(v)));
+                return Value.FromObject(MiniPandaString.Create(StringifyJson(v)));
             })));
 
             env.Define("json", Value.FromObject(jsonObj));
@@ -595,7 +595,7 @@ namespace Azathrix.MiniPanda.VM
                 index++;
             }
             index++; // skip closing "
-            return Value.FromObject(new MiniPandaString(sb.ToString()));
+            return Value.FromObject(MiniPandaString.Create(sb.ToString()));
         }
 
         private static Value ParseJsonObject(string json, ref int index)
@@ -811,7 +811,7 @@ namespace Azathrix.MiniPanda.VM
                 {
                     sb.AppendLine($"  at {frame.Name} ({frame.File}:{frame.Line})");
                 }
-                return Value.FromObject(new MiniPandaString(sb.ToString()));
+                return Value.FromObject(MiniPandaString.Create(sb.ToString()));
             })));
 
             // assert - throw error if condition is false

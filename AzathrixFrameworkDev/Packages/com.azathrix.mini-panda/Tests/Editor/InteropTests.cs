@@ -60,7 +60,7 @@ namespace Azathrix.MiniPanda.Tests
         [Test]
         public void Eval_WithEnvironment()
         {
-            var result = _vm.Eval("x + y", new { x = 10, y = 20 });
+            var result = _vm.Eval("x + y", new Dictionary<string, object> { ["x"] = 10, ["y"] = 20 });
             Assert.AreEqual(30.0, result.AsNumber());
         }
 
@@ -68,7 +68,7 @@ namespace Azathrix.MiniPanda.Tests
         public void Call_WithScope()
         {
             _vm.Run("global func greet(name) { return prefix + name + suffix }");
-            var result = _vm.Call(new { prefix = "Hello, ", suffix = "!" }, "greet", "World");
+            var result = _vm.Call(new Dictionary<string, object> { ["prefix"] = "Hello, ", ["suffix"] = "!" }, "greet", "World");
             Assert.AreEqual("Hello, World!", result.AsString());
         }
 
@@ -128,7 +128,7 @@ namespace Azathrix.MiniPanda.Tests
         [Test]
         public void Eval_GenericWithEnv()
         {
-            Assert.AreEqual(30, _vm.Eval<int>("x + y", new { x = 10, y = 20 }));
+            Assert.AreEqual(30, _vm.Eval<int>("x + y", new Dictionary<string, object> { ["x"] = 10, ["y"] = 20 }));
         }
 
         [Test]
@@ -171,6 +171,55 @@ namespace Azathrix.MiniPanda.Tests
             _vm.Run("var x = 10", "test");
             var result = _vm.Run<int>("return x + 5", "test", clearScope: false);
             Assert.AreEqual(15, result);
+        }
+
+        // ========== IEnvironmentProvider 测试 ==========
+
+        private class TestEnvProvider : IEnvironmentProvider
+        {
+            public int X { get; set; } = 10;
+            public int Y { get; set; } = 20;
+
+            public Value Get(string name) => name switch
+            {
+                "x" => Value.FromNumber(X),
+                "y" => Value.FromNumber(Y),
+                _ => Value.Null
+            };
+
+            public bool Contains(string name) => name is "x" or "y";
+        }
+
+        [Test]
+        public void Eval_WithEnvironmentProvider()
+        {
+            var provider = new TestEnvProvider();
+            var result = _vm.Eval("x + y", provider);
+            Assert.AreEqual(30.0, result.AsNumber());
+        }
+
+        [Test]
+        public void Eval_WithEnvironmentProvider_DynamicUpdate()
+        {
+            var provider = new TestEnvProvider { X = 10, Y = 20 };
+
+            var result1 = _vm.Eval<int>("x + y", provider);
+            Assert.AreEqual(30, result1);
+
+            // 修改外部值
+            provider.X = 100;
+            provider.Y = 200;
+
+            // 再次求值，应该获取最新值
+            var result2 = _vm.Eval<int>("x + y", provider);
+            Assert.AreEqual(300, result2);
+        }
+
+        [Test]
+        public void Eval_WithEnvironmentProvider_Generic()
+        {
+            var provider = new TestEnvProvider { X = 5, Y = 3 };
+            Assert.AreEqual(15, _vm.Eval<int>("x * y", provider));
         }
     }
 

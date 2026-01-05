@@ -16,6 +16,7 @@ namespace Azathrix.MiniPanda.Editor
         {
             EditorApplication.delayCall += StartLSPServer;
             AssemblyReloadEvents.beforeAssemblyReload += StopLSPServer;
+            AssemblyReloadEvents.afterAssemblyReload += StartLSPServer;
             EditorApplication.quitting += StopLSPServer;
         }
 

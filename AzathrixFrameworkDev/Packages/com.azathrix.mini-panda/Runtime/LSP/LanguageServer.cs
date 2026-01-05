@@ -119,8 +119,8 @@ namespace Azathrix.MiniPanda.LSP
                         var message = ReadMessage(stream);
                         if (message == null) break;
 
-                        var response = HandleMessage(message);
-                        if (response != null)
+                        var responses = HandleMessage(message);
+                        foreach (var response in responses)
                         {
                             SendMessage(writer, response);
                         }
@@ -225,13 +225,15 @@ namespace Azathrix.MiniPanda.LSP
             writer.Flush();
         }
 
-        private Dictionary<string, object> HandleMessage(Dictionary<string, object> message)
+        private List<Dictionary<string, object>> HandleMessage(Dictionary<string, object> message)
         {
+            var responses = new List<Dictionary<string, object>>();
             var method = message.ContainsKey("method") ? message["method"]?.ToString() : null;
             var id = message.ContainsKey("id") ? message["id"] : null;
             var @params = message.ContainsKey("params") ? message["params"] as Dictionary<string, object> : null;
 
             object result = null;
+            string diagnosticUri = null;
 
             switch (method)
             {
@@ -239,22 +241,22 @@ namespace Azathrix.MiniPanda.LSP
                     result = HandleInitialize(@params);
                     break;
                 case "initialized":
-                    return null; // 通知，无需响应
+                    return responses;
                 case "shutdown":
                     result = null;
                     break;
                 case "exit":
                     Stop();
-                    return null;
+                    return responses;
                 case "textDocument/didOpen":
-                    HandleDidOpen(@params);
-                    return null;
+                    diagnosticUri = HandleDidOpen(@params);
+                    break;
                 case "textDocument/didChange":
-                    HandleDidChange(@params);
-                    return null;
+                    diagnosticUri = HandleDidChange(@params);
+                    break;
                 case "textDocument/didClose":
                     HandleDidClose(@params);
-                    return null;
+                    return responses;
                 case "textDocument/completion":
                     result = HandleCompletion(@params);
                     break;
@@ -270,19 +272,32 @@ namespace Azathrix.MiniPanda.LSP
                 case "textDocument/signatureHelp":
                     result = HandleSignatureHelp(@params);
                     break;
+                case "textDocument/formatting":
+                    result = HandleFormatting(@params);
+                    break;
+                case "textDocument/rename":
+                    result = HandleRename(@params);
+                    break;
                 default:
                     if (id != null)
                     {
-                        return CreateErrorResponse(id, -32601, $"Method not found: {method}");
+                        responses.Add(CreateErrorResponse(id, -32601, $"Method not found: {method}"));
                     }
-                    return null;
+                    return responses;
             }
 
             if (id != null)
             {
-                return CreateResponse(id, result);
+                responses.Add(CreateResponse(id, result));
             }
-            return null;
+
+            // 发送诊断通知
+            if (diagnosticUri != null)
+            {
+                responses.Add(CreateDiagnosticsNotification(diagnosticUri));
+            }
+
+            return responses;
         }
 
         #region 请求处理
@@ -304,7 +319,9 @@ namespace Azathrix.MiniPanda.LSP
                     ["signatureHelpProvider"] = new Dictionary<string, object>
                     {
                         ["triggerCharacters"] = new[] { "(", "," }
-                    }
+                    },
+                    ["documentFormattingProvider"] = true,
+                    ["renameProvider"] = true
                 },
                 ["serverInfo"] = new Dictionary<string, object>
                 {
@@ -314,7 +331,7 @@ namespace Azathrix.MiniPanda.LSP
             };
         }
 
-        private void HandleDidOpen(Dictionary<string, object> @params)
+        private string HandleDidOpen(Dictionary<string, object> @params)
         {
             var textDocument = @params?["textDocument"] as Dictionary<string, object>;
             var uri = textDocument?["uri"]?.ToString();
@@ -322,10 +339,12 @@ namespace Azathrix.MiniPanda.LSP
             if (uri != null && text != null)
             {
                 _service.OpenDocument(uri, text);
+                return uri;
             }
+            return null;
         }
 
-        private void HandleDidChange(Dictionary<string, object> @params)
+        private string HandleDidChange(Dictionary<string, object> @params)
         {
             var textDocument = @params?["textDocument"] as Dictionary<string, object>;
             var uri = textDocument?["uri"]?.ToString();
@@ -337,8 +356,10 @@ namespace Azathrix.MiniPanda.LSP
                 if (text != null)
                 {
                     _service.UpdateDocument(uri, text);
+                    return uri;
                 }
             }
+            return null;
         }
 
         private void HandleDidClose(Dictionary<string, object> @params)
@@ -468,6 +489,62 @@ namespace Azathrix.MiniPanda.LSP
             };
         }
 
+        private object HandleFormatting(Dictionary<string, object> @params)
+        {
+            var textDocument = @params?["textDocument"] as Dictionary<string, object>;
+            var options = @params?["options"] as Dictionary<string, object>;
+            var uri = textDocument?["uri"]?.ToString();
+
+            if (uri == null) return new List<object>();
+
+            var tabSize = 4;
+            var insertSpaces = true;
+            if (options != null)
+            {
+                if (options.TryGetValue("tabSize", out var ts))
+                    tabSize = Convert.ToInt32(ts);
+                if (options.TryGetValue("insertSpaces", out var ins))
+                    insertSpaces = Convert.ToBoolean(ins);
+            }
+
+            var edits = _service.FormatDocument(uri, tabSize, insertSpaces);
+            return edits.ConvertAll(e => new Dictionary<string, object>
+            {
+                ["range"] = RangeToDict(e.Range),
+                ["newText"] = e.NewText
+            });
+        }
+
+        private object HandleRename(Dictionary<string, object> @params)
+        {
+            var textDocument = @params?["textDocument"] as Dictionary<string, object>;
+            var position = @params?["position"] as Dictionary<string, object>;
+            var newName = @params?["newName"]?.ToString();
+            var uri = textDocument?["uri"]?.ToString();
+
+            if (uri == null || position == null || string.IsNullOrEmpty(newName)) return null;
+
+            var pos = new Position(
+                Convert.ToInt32(position["line"]),
+                Convert.ToInt32(position["character"])
+            );
+
+            var edit = _service.Rename(uri, pos, newName);
+            if (edit.Changes.Count == 0) return null;
+
+            var changes = new Dictionary<string, object>();
+            foreach (var kv in edit.Changes)
+            {
+                changes[kv.Key] = kv.Value.ConvertAll(e => new Dictionary<string, object>
+                {
+                    ["range"] = RangeToDict(e.Range),
+                    ["newText"] = e.NewText
+                });
+            }
+
+            return new Dictionary<string, object> { ["changes"] = changes };
+        }
+
         #endregion
 
         #region 辅助方法
@@ -492,6 +569,27 @@ namespace Azathrix.MiniPanda.LSP
                 {
                     ["code"] = code,
                     ["message"] = message
+                }
+            };
+        }
+
+        private Dictionary<string, object> CreateDiagnosticsNotification(string uri)
+        {
+            var diagnostics = _service.GetDiagnostics(uri);
+            return new Dictionary<string, object>
+            {
+                ["jsonrpc"] = "2.0",
+                ["method"] = "textDocument/publishDiagnostics",
+                ["params"] = new Dictionary<string, object>
+                {
+                    ["uri"] = uri,
+                    ["diagnostics"] = diagnostics.ConvertAll(d => new Dictionary<string, object>
+                    {
+                        ["range"] = RangeToDict(d.Range),
+                        ["severity"] = (int)d.Severity,
+                        ["source"] = d.Source,
+                        ["message"] = d.Message
+                    })
                 }
             };
         }

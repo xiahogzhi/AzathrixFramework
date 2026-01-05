@@ -1,12 +1,42 @@
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Azathrix.MiniPanda.Core
 {
+    /// <summary>
+    /// MiniPanda 字符串类型，支持字符串驻留优化
+    /// </summary>
     public class MiniPandaString : MiniPandaHeapObject
     {
+        // 字符串驻留池（短字符串自动驻留以减少内存分配）
+        private static readonly ConcurrentDictionary<string, MiniPandaString> _internPool = new ConcurrentDictionary<string, MiniPandaString>();
+        private const int InternThreshold = 64; // 只驻留短字符串
+
         public string Value { get; }
 
-        public MiniPandaString(string value) => Value = value;
+        private MiniPandaString(string value) => Value = value;
+
+        /// <summary>
+        /// 创建或获取驻留的字符串实例
+        /// </summary>
+        public static MiniPandaString Create(string value)
+        {
+            if (value == null) return new MiniPandaString(string.Empty);
+
+            // 短字符串使用驻留池
+            if (value.Length <= InternThreshold)
+            {
+                return _internPool.GetOrAdd(value, v => new MiniPandaString(v));
+            }
+
+            // 长字符串直接创建
+            return new MiniPandaString(value);
+        }
+
+        /// <summary>
+        /// 清空驻留池（用于重置 VM 状态）
+        /// </summary>
+        public static void ClearInternPool() => _internPool.Clear();
 
         public override string ToString() => Value;
     }

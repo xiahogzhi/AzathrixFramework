@@ -110,6 +110,15 @@ namespace Azathrix.MiniPanda.VM
         /// <summary>当前调用帧深度（用于调试）</summary>
         public int FrameDepth => _frameCount;
 
+        // ==================== 对象池 ====================
+
+        /// <summary>数组迭代器对象池</summary>
+        private readonly ObjectPool<ArrayIterator> _arrayIteratorPool;
+        /// <summary>对象迭代器对象池</summary>
+        private readonly ObjectPool<ObjectIterator> _objectIteratorPool;
+        /// <summary>字符串迭代器对象池</summary>
+        private readonly ObjectPool<StringIterator> _stringIteratorPool;
+
         /// <summary>
         /// 调用帧结构，保存函数调用的执行上下文
         /// </summary>
@@ -148,6 +157,23 @@ namespace Azathrix.MiniPanda.VM
         public VirtualMachine()
         {
             _globalScope = new Environment();
+
+            // 初始化迭代器对象池
+            _arrayIteratorPool = new ObjectPool<ArrayIterator>(
+                () => new ArrayIterator(null),
+                iter => iter.Reset(null),
+                maxSize: 32
+            );
+            _objectIteratorPool = new ObjectPool<ObjectIterator>(
+                () => new ObjectIterator(null),
+                iter => iter.Reset(null),
+                maxSize: 32
+            );
+            _stringIteratorPool = new ObjectPool<StringIterator>(
+                () => new StringIterator(null),
+                iter => iter.Reset(null),
+                maxSize: 32
+            );
         }
 
         /// <summary>
@@ -183,6 +209,11 @@ namespace Azathrix.MiniPanda.VM
             _handlerCount = 0;
             _hasPendingException = false;
             _openUpvalues = null;
+
+            // 清理对象池
+            _arrayIteratorPool.Clear();
+            _objectIteratorPool.Clear();
+            _stringIteratorPool.Clear();
         }
 
         #region 作用域管理
@@ -292,17 +323,38 @@ namespace Azathrix.MiniPanda.VM
 
             var frame = _frames[frameId];
             var func = frame.Function;
-            if (func?.Prototype == null) return result;
-
-            // 获取局部变量名（需要编译器提供调试信息）
-            // 目前简化实现，返回栈上的值
             var stackBase = frame.StackBase;
-            for (int i = 0; i < func.Prototype.Arity && stackBase + i < _stackTop; i++)
+
+            // 优先从 FunctionPrototype 获取，其次从 Bytecode 获取
+            var localNames = func?.Prototype?.LocalNames ?? frame.Bytecode?.LocalNames;
+            if (localNames != null && localNames.Count > 0)
             {
-                result[$"arg{i}"] = _stack[stackBase + i];
+                for (int i = 0; i < localNames.Count && stackBase + i < _stackTop; i++)
+                {
+                    var name = localNames[i];
+                    if (!string.IsNullOrEmpty(name) && !name.StartsWith("$"))
+                        result[name] = _stack[stackBase + i];
+                }
+            }
+            else if (func?.Prototype != null)
+            {
+                // 回退：只显示参数
+                for (int i = 0; i < func.Prototype.Arity && stackBase + i < _stackTop; i++)
+                {
+                    result[$"arg{i}"] = _stack[stackBase + i];
+                }
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 获取指定帧的闭包环境（用于调试）
+        /// </summary>
+        public Environment GetFrameEnvironment(int frameId)
+        {
+            if (frameId < 0 || frameId >= _frameCount) return null;
+            return _frames[frameId].Function?.Closure;
         }
 
         #endregion
@@ -353,19 +405,55 @@ namespace Azathrix.MiniPanda.VM
             return Run(code, scopeName, clearScope).To<T>(this);
         }
 
-        /// <summary>
-        /// 求值表达式
-        /// </summary>
-        /// <param name="expression">表达式字符串</param>
-        /// <param name="env">环境变量（可选）</param>
-        /// <param name="scopeName">作用域名称</param>
-        /// <param name="clearScope">是否清除作用域</param>
-        /// <returns>表达式结果</returns>
-        /// <remarks>
-        /// 表达式会被包装为 "return {expression}" 执行
-        /// env 参数可以是 Environment、Dictionary 或普通对象
-        /// </remarks>
-        public Value Eval(string expression, object env = null, string scopeName = "main", bool clearScope = true)
+        /// <summary>求值表达式</summary>
+        public Value Eval(string expression, string scopeName = "main", bool clearScope = true)
+        {
+            return EvalInternal(expression, null, scopeName, clearScope);
+        }
+
+        /// <summary>求值表达式（带 Environment 环境变量）</summary>
+        public Value Eval(string expression, Environment env, string scopeName = "main", bool clearScope = true)
+        {
+            return EvalInternal(expression, env, scopeName, clearScope);
+        }
+
+        /// <summary>求值表达式（带 Dictionary 环境变量）</summary>
+        public Value Eval(string expression, Dictionary<string, object> env, string scopeName = "main", bool clearScope = true)
+        {
+            return EvalInternal(expression, env, scopeName, clearScope);
+        }
+
+        /// <summary>求值表达式（带自定义环境提供者）</summary>
+        public Value Eval(string expression, IEnvironmentProvider env, string scopeName = "main", bool clearScope = true)
+        {
+            return EvalInternal(expression, env, scopeName, clearScope);
+        }
+
+        /// <summary>求值表达式并转换返回值类型</summary>
+        public T Eval<T>(string expression, string scopeName = "main", bool clearScope = true)
+        {
+            return Eval(expression, scopeName, clearScope).To<T>(this);
+        }
+
+        /// <summary>求值表达式并转换返回值类型（带 Environment 环境变量）</summary>
+        public T Eval<T>(string expression, Environment env, string scopeName = "main", bool clearScope = true)
+        {
+            return Eval(expression, env, scopeName, clearScope).To<T>(this);
+        }
+
+        /// <summary>求值表达式并转换返回值类型（带 Dictionary 环境变量）</summary>
+        public T Eval<T>(string expression, Dictionary<string, object> env, string scopeName = "main", bool clearScope = true)
+        {
+            return Eval(expression, env, scopeName, clearScope).To<T>(this);
+        }
+
+        /// <summary>求值表达式并转换返回值类型（带自定义环境提供者）</summary>
+        public T Eval<T>(string expression, IEnvironmentProvider env, string scopeName = "main", bool clearScope = true)
+        {
+            return Eval(expression, env, scopeName, clearScope).To<T>(this);
+        }
+
+        private Value EvalInternal(string expression, object env, string scopeName, bool clearScope)
         {
             var code = $"return {expression}";
 
@@ -383,7 +471,6 @@ namespace Azathrix.MiniPanda.VM
             var scope = GetScope(scopeName);
             if (clearScope) scope.Clear();
 
-            // 将环境变量注入作用域
             if (env != null)
             {
                 if (env is Environment e)
@@ -395,21 +482,13 @@ namespace Azathrix.MiniPanda.VM
                 {
                     scope.With(dict);
                 }
-                else
+                else if (env is IEnvironmentProvider provider)
                 {
-                    scope.With(env);
+                    scope = new Environment(scope, provider);
                 }
             }
 
             return RunBytecode(compiled.Bytecode, scope);
-        }
-
-        /// <summary>
-        /// 求值表达式并转换返回值类型
-        /// </summary>
-        public T Eval<T>(string expression, object env = null, string scopeName = "main", bool clearScope = true)
-        {
-            return Eval(expression, env, scopeName, clearScope).To<T>(this);
         }
 
         /// <summary>
@@ -432,23 +511,23 @@ namespace Azathrix.MiniPanda.VM
             throw new MiniPandaRuntimeException($"'{funcName}' is not a function");
         }
 
-        /// <summary>
-        /// 在指定作用域中调用全局函数
-        /// </summary>
-        /// <param name="scope">作用域对象（Environment、Dictionary 或普通对象）</param>
-        /// <param name="funcName">函数名</param>
-        /// <param name="args">参数列表</param>
-        /// <returns>函数返回值</returns>
-        /// <remarks>
-        /// 创建临时作用域环境，将 scope 中的变量注入后执行函数
-        /// 适用于需要向函数传递上下文的场景
-        /// </remarks>
-        public Value Call(object scope, string funcName, params object[] args)
+        /// <summary>在指定 Environment 作用域中调用全局函数</summary>
+        public Value Call(Environment scope, string funcName, params object[] args)
+        {
+            return CallInternal(scope, funcName, args);
+        }
+
+        /// <summary>在指定 Dictionary 作用域中调用全局函数</summary>
+        public Value Call(Dictionary<string, object> scope, string funcName, params object[] args)
+        {
+            return CallInternal(scope, funcName, args);
+        }
+
+        private Value CallInternal(object scope, string funcName, object[] args)
         {
             var func = _globalScope.Get(funcName);
             if (func.As<MiniPandaFunction>() is { } function)
             {
-                // 创建带有临时环境的作用域函数
                 var scopedEnv = function.Closure.CreateChild();
                 if (scope is Environment e)
                 {
@@ -458,10 +537,6 @@ namespace Azathrix.MiniPanda.VM
                 else if (scope is Dictionary<string, object> dict)
                 {
                     scopedEnv.With(dict);
-                }
-                else if (scope != null)
-                {
-                    scopedEnv.With(scope);
                 }
 
                 var scopedFunc = new MiniPandaFunction(function.Prototype, scopedEnv);
@@ -754,7 +829,7 @@ namespace Azathrix.MiniPanda.VM
 
             // 创建主函数并执行
             var mainFunc = new MiniPandaFunction(
-                new FunctionPrototype {Name = "<main>", Arity = 0, Code = bytecode},
+                new FunctionPrototype {Name = "<main>", Arity = 0, Code = bytecode, LocalNames = bytecode.LocalNames},
                 runScope
             );
 
@@ -1046,6 +1121,8 @@ namespace Azathrix.MiniPanda.VM
                     case Opcode.Dup2:
                     {
                         // 复制栈顶两个元素
+                        if (_stackTop < 2)
+                            throw new MiniPandaRuntimeException("Stack underflow: Dup2 requires at least 2 elements");
                         var a = Peek(1);
                         var b = Peek(0);
                         Push(a);
@@ -1056,6 +1133,8 @@ namespace Azathrix.MiniPanda.VM
                     case Opcode.SwapUnder:
                     {
                         // 交换栈中较深位置的两个元素
+                        if (_stackTop < 4)
+                            throw new MiniPandaRuntimeException("Stack underflow: SwapUnder requires at least 4 elements");
                         var top = _stackTop - 1;
                         var temp = _stack[top - 2];
                         _stack[top - 2] = _stack[top - 3];
@@ -1066,6 +1145,8 @@ namespace Azathrix.MiniPanda.VM
                     case Opcode.Rot3Under:
                     {
                         // 三元素旋转
+                        if (_stackTop < 4)
+                            throw new MiniPandaRuntimeException("Stack underflow: Rot3Under requires at least 4 elements");
                         var top = _stackTop - 1;
                         var a = _stack[top - 3];
                         var b = _stack[top - 2];
@@ -1787,7 +1868,7 @@ namespace Azathrix.MiniPanda.VM
                             sb.Append(part.AsString());
                         }
 
-                        Push(Value.FromObject(new MiniPandaString(sb.ToString())));
+                        Push(Value.FromObject(MiniPandaString.Create(sb.ToString())));
                         break;
                     }
 
@@ -1795,19 +1876,25 @@ namespace Azathrix.MiniPanda.VM
 
                     case Opcode.GetIter:
                     {
-                        // 获取迭代器
+                        // 获取迭代器（从对象池租用）
                         var iterable = Pop();
                         if (iterable.As<MiniPandaArray>() is { } array)
                         {
-                            Push(Value.FromObject(new ArrayIterator(array)));
+                            var iter = _arrayIteratorPool.Rent();
+                            iter.Reset(array);
+                            Push(Value.FromObject(iter));
                         }
                         else if (iterable.As<MiniPandaObject>() is { } obj)
                         {
-                            Push(Value.FromObject(new ObjectIterator(obj)));
+                            var iter = _objectIteratorPool.Rent();
+                            iter.Reset(obj);
+                            Push(Value.FromObject(iter));
                         }
                         else if (iterable.As<MiniPandaString>() is { } str)
                         {
-                            Push(Value.FromObject(new StringIterator(str.Value)));
+                            var iter = _stringIteratorPool.Rent();
+                            iter.Reset(str.Value);
+                            Push(Value.FromObject(iter));
                         }
                         else
                         {
@@ -1833,6 +1920,7 @@ namespace Azathrix.MiniPanda.VM
                             if (iter == null)
                                 throw new MiniPandaRuntimeException("Object is not iterable");
                             Pop(); // 移除迭代器
+                            ReturnIterator(iter); // 归还到对象池
                             frame.IP += offset;
                         }
 
@@ -1857,6 +1945,7 @@ namespace Azathrix.MiniPanda.VM
                             if (iter == null)
                                 throw new MiniPandaRuntimeException("Object is not iterable");
                             Pop(); // 移除迭代器
+                            ReturnIterator(iter); // 归还到对象池
                             frame.IP += offset;
                         }
 
@@ -2102,7 +2191,7 @@ namespace Azathrix.MiniPanda.VM
             // 如果任一操作数是字符串且提供了字符串运算，则进行字符串运算
             if (strOp != null && (a.IsString || b.IsString))
             {
-                Push(Value.FromObject(new MiniPandaString(strOp(a.AsString(), b.AsString()))));
+                Push(Value.FromObject(MiniPandaString.Create(strOp(a.AsString(), b.AsString()))));
             }
             else
             {
@@ -2268,6 +2357,27 @@ namespace Azathrix.MiniPanda.VM
             }
         }
 
+        // ==================== 对象池辅助 ====================
+
+        /// <summary>
+        /// 归还迭代器到对象池
+        /// </summary>
+        private void ReturnIterator(IIterator iter)
+        {
+            switch (iter)
+            {
+                case ArrayIterator ai:
+                    _arrayIteratorPool.Return(ai);
+                    break;
+                case ObjectIterator oi:
+                    _objectIteratorPool.Return(oi);
+                    break;
+                case StringIterator si:
+                    _stringIteratorPool.Return(si);
+                    break;
+            }
+        }
+
         // ==================== 栈操作 ====================
 
         /// <summary>压栈</summary>
@@ -2294,7 +2404,7 @@ namespace Azathrix.MiniPanda.VM
                 null => Value.Null,
                 bool b => Value.FromBool(b),
                 double d => Value.FromNumber(d),
-                string s => Value.FromObject(new MiniPandaString(s)),
+                string s => Value.FromObject(MiniPandaString.Create(s)),
                 FunctionPrototype fp => Value.FromObject(new MiniPandaFunction(fp, _globalScope)),
                 _ => Value.Null
             };
@@ -2315,7 +2425,7 @@ namespace Azathrix.MiniPanda.VM
                 double d => Value.FromNumber(d),
                 string s => s,
                 Value v => v,
-                _ => Value.FromObject(new MiniPandaString(obj.ToString()))
+                _ => Value.FromObject(MiniPandaString.Create(obj.ToString()))
             };
         }
 
@@ -2380,14 +2490,22 @@ namespace Azathrix.MiniPanda.VM
     }
 
     /// <summary>
-    /// 数组迭代器
+    /// 数组迭代器（支持对象池复用）
     /// </summary>
     internal class ArrayIterator : MiniPandaHeapObject, IIterator
     {
-        private readonly MiniPandaArray _array;
+        private MiniPandaArray _array;
         private int _index;
 
         public ArrayIterator(MiniPandaArray array)
+        {
+            Reset(array);
+        }
+
+        /// <summary>
+        /// 重置迭代器以复用
+        /// </summary>
+        public void Reset(MiniPandaArray array)
         {
             _array = array;
             _index = 0;
@@ -2405,52 +2523,73 @@ namespace Azathrix.MiniPanda.VM
     }
 
     /// <summary>
-    /// 对象/字典迭代器
+    /// 对象/字典迭代器（支持对象池复用）
     /// </summary>
     internal class ObjectIterator : MiniPandaHeapObject, IIterator
     {
-        private readonly List<string> _keys;
-        private readonly MiniPandaObject _obj;
+        private List<string> _keys;
+        private MiniPandaObject _obj;
         private int _index;
 
         public ObjectIterator(MiniPandaObject obj)
         {
+            _keys = new List<string>();
+            Reset(obj);
+        }
+
+        /// <summary>
+        /// 重置迭代器以复用
+        /// </summary>
+        public void Reset(MiniPandaObject obj)
+        {
             _obj = obj;
-            _keys = new List<string>(obj.Fields.Keys);
+            _keys.Clear();
+            if (obj != null)
+            {
+                _keys.AddRange(obj.Fields.Keys);
+            }
             _index = 0;
         }
 
         public bool HasNext() => _index < _keys.Count;
-        public Value Next() => Value.FromObject(new MiniPandaString(_keys[_index++]));
+        public Value Next() => Value.FromObject(MiniPandaString.Create(_keys[_index++]));
 
         public (Value Key, Value Val) NextKV()
         {
             var key = _keys[_index++];
-            return (Value.FromObject(new MiniPandaString(key)), _obj.Fields[key]);
+            return (Value.FromObject(MiniPandaString.Create(key)), _obj.Fields[key]);
         }
     }
 
     /// <summary>
-    /// 字符串迭代器
+    /// 字符串迭代器（支持对象池复用）
     /// </summary>
     internal class StringIterator : MiniPandaHeapObject, IIterator
     {
-        private readonly string _str;
+        private string _str;
         private int _index;
 
         public StringIterator(string str)
+        {
+            Reset(str);
+        }
+
+        /// <summary>
+        /// 重置迭代器以复用
+        /// </summary>
+        public void Reset(string str)
         {
             _str = str;
             _index = 0;
         }
 
         public bool HasNext() => _index < _str.Length;
-        public Value Next() => Value.FromObject(new MiniPandaString(_str[_index++].ToString()));
+        public Value Next() => Value.FromObject(MiniPandaString.Create(_str[_index++].ToString()));
 
         public (Value Key, Value Val) NextKV()
         {
             var key = Value.FromNumber(_index);
-            var val = Value.FromObject(new MiniPandaString(_str[_index++].ToString()));
+            var val = Value.FromObject(MiniPandaString.Create(_str[_index++].ToString()));
             return (key, val);
         }
     }

@@ -12,5 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a16ddee7f7484645a67b4ea67916764, type: 3}
   m_Name: SystemRegistrySettings
   m_EditorClassIdentifier: Azathrix.Framework.Runtime::Azathrix.Framework.Settings.SystemRegistrySettings
-  systems: []
+  systems:
+  - typeName: Azathrix.Timer.Runtime.TimerManager
+    displayName: TimerManager
+    enabled: 1
+    priority: -100
+    alias: 
+    dependencies: []
   interfaceSelections: []

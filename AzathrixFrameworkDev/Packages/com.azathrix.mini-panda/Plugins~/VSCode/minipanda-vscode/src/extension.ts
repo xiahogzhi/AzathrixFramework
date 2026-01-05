@@ -5,15 +5,34 @@ import {
     LanguageClient,
     LanguageClientOptions,
     StreamInfo,
-    State
+    State,
+    ErrorHandler,
+    ErrorAction,
+    CloseAction,
+    Message,
+    RevealOutputChannelOn
 } from 'vscode-languageclient/node';
+
+// 静默错误处理器
+class SilentErrorHandler implements ErrorHandler {
+    error(_error: Error, _message: Message | undefined, _count: number | undefined): ErrorHandlerResult | Promise<ErrorHandlerResult> {
+        return { action: ErrorAction.Continue, handled: true };
+    }
+    closed(): CloseHandlerResult | Promise<CloseHandlerResult> {
+        return { action: CloseAction.DoNotRestart, handled: true };
+    }
+}
+
+type ErrorHandlerResult = { action: ErrorAction; message?: string; handled?: boolean };
+type CloseHandlerResult = { action: CloseAction; message?: string; handled?: boolean };
 
 let languageClient: LanguageClient | null = null;
 let retryTimer: NodeJS.Timeout | null = null;
 let shouldRetry = true;
 let activeSocket: Net.Socket | null = null;
-let isStarting = false; // 防止重复启动
-let startToken = 0; // 防止并发重连
+let isStarting = false;
+let startToken = 0;
+let outputChannel: vscode.OutputChannel | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('[MiniPanda] Extension activating...');
@@ -30,6 +49,12 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.debug.registerDebugConfigurationProvider('minipanda', new MiniPandaConfigurationProvider())
     );
     console.log('[MiniPanda] Debug configuration provider registered');
+
+    // 注册表达式提供器（用于 hover 时获取完整的成员访问表达式）
+    context.subscriptions.push(
+        vscode.languages.registerEvaluatableExpressionProvider('minipanda', new MiniPandaEvaluatableExpressionProvider())
+    );
+    console.log('[MiniPanda] Evaluatable expression provider registered');
 
     // 启动语言客户端
     startLanguageClient(context);
@@ -100,22 +125,12 @@ function createConnection(host: string, port: number): Promise<StreamInfo> {
 let currentContext: vscode.ExtensionContext | null = null;
 
 async function startLanguageClient(context: vscode.ExtensionContext) {
-    // 防止重复启动
-    if (isStarting) {
-        console.log('[MiniPanda] Already starting, skip');
-        return;
-    }
+    if (isStarting) return;
 
-    // 先停止旧的客户端
     if (languageClient) {
-        console.log('[MiniPanda] Stopping old client before restart');
         const oldClient = languageClient;
         languageClient = null;
-        try {
-            await oldClient.stop();
-        } catch (e) {
-            // 忽略停止错误
-        }
+        try { await oldClient.stop(); } catch (e) { }
     }
 
     isStarting = true;
@@ -128,28 +143,30 @@ async function startLanguageClient(context: vscode.ExtensionContext) {
     const host = config.get<string>('languageServer.host', 'localhost');
 
     const serverOptions = async (): Promise<StreamInfo> => {
-        // 重试连接
         while (shouldRetry && myToken === startToken) {
             try {
                 return await createConnection(host, port);
             } catch (err) {
-                console.log(`[MiniPanda] Connection failed, retrying in 3s...`);
                 await new Promise(r => setTimeout(r, 3000));
             }
         }
         throw new Error('Connection cancelled');
     };
 
+    // 复用 output channel
+    if (!outputChannel) {
+        outputChannel = vscode.window.createOutputChannel('MiniPanda Language Server');
+    }
+
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'minipanda' }],
         synchronize: {
             fileEvents: vscode.workspace.createFileSystemWatcher('**/*.panda')
         },
-        outputChannelName: 'MiniPanda Language Server',
-        initializationFailedHandler: (error) => {
-            console.log('[MiniPanda] Initialization failed:', error);
-            return false;
-        }
+        outputChannel: outputChannel,
+        revealOutputChannelOn: RevealOutputChannelOn.Never,
+        initializationFailedHandler: () => false,
+        errorHandler: new SilentErrorHandler()
     };
 
     languageClient = new LanguageClient(
@@ -159,25 +176,23 @@ async function startLanguageClient(context: vscode.ExtensionContext) {
         clientOptions
     );
 
-    // 监控客户端状态
     languageClient.onDidChangeState(e => {
-        console.log(`[MiniPanda] Client state: ${State[e.oldState]} -> ${State[e.newState]}`);
+        if (e.newState === State.Running) {
+            vscode.window.showInformationMessage('[MiniPanda] Language server connected');
+        }
         if (e.newState === State.Stopped && shouldRetry && !isStarting) {
-            console.log('[MiniPanda] Language client stopped, restarting...');
             setTimeout(() => {
                 if (shouldRetry && currentContext && !isStarting) {
                     startLanguageClient(currentContext);
                 }
-            }, 3000);
+            }, 5000);
         }
     });
 
-    console.log('[MiniPanda] Starting language client...');
     try {
         await languageClient.start();
-        console.log('[MiniPanda] Language client started successfully, state:', State[languageClient.state]);
     } catch (err) {
-        console.log('[MiniPanda] Failed to start language client:', err);
+        // 静默
     } finally {
         isStarting = false;
     }
@@ -242,6 +257,63 @@ class MiniPandaConfigurationProvider implements vscode.DebugConfigurationProvide
         }
 
         return config;
+    }
+}
+
+// 表达式提供器：用于 hover 时获取完整的成员访问表达式（如 config.debug）
+class MiniPandaEvaluatableExpressionProvider implements vscode.EvaluatableExpressionProvider {
+    provideEvaluatableExpression(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.EvaluatableExpression> {
+        const line = document.lineAt(position.line).text;
+
+        // 从光标位置向左右扩展，找到完整的标识符链（支持 a.b.c 格式）
+        let start = position.character;
+        let end = position.character;
+
+        // 向左扩展
+        while (start > 0) {
+            const ch = line[start - 1];
+            if (/[\w.]/.test(ch)) {
+                start--;
+            } else {
+                break;
+            }
+        }
+
+        // 向右扩展
+        while (end < line.length) {
+            const ch = line[end];
+            if (/[\w]/.test(ch)) {
+                end++;
+            } else {
+                break;
+            }
+        }
+
+        // 提取表达式
+        let expression = line.substring(start, end);
+
+        // 去掉开头的点（如果有）
+        if (expression.startsWith('.')) {
+            expression = expression.substring(1);
+            start++;
+        }
+
+        // 去掉结尾的点（如果有）
+        if (expression.endsWith('.')) {
+            expression = expression.substring(0, expression.length - 1);
+            end--;
+        }
+
+        if (!expression || expression.length === 0) {
+            return undefined;
+        }
+
+        const range = new vscode.Range(position.line, start, position.line, end);
+        return new vscode.EvaluatableExpression(range, expression);
     }
 }
 

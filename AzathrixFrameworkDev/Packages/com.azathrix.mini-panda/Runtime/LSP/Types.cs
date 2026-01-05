@@ -165,6 +165,7 @@ namespace Azathrix.MiniPanda.LSP
     {
         public string Name { get; set; }
         public string Detail { get; set; }
+        public string Documentation { get; set; }
         public SymbolKind Kind { get; set; }
         public Range Range { get; set; }
         public Range SelectionRange { get; set; }
@@ -198,5 +199,22 @@ namespace Azathrix.MiniPanda.LSP
     {
         public string Label { get; set; }
         public string Documentation { get; set; }
+    }
+
+    /// <summary>
+    /// 文本编辑
+    /// </summary>
+    public class TextEdit
+    {
+        public Range Range { get; set; }
+        public string NewText { get; set; }
+    }
+
+    /// <summary>
+    /// 工作区编辑
+    /// </summary>
+    public class WorkspaceEdit
+    {
+        public Dictionary<string, List<TextEdit>> Changes { get; set; } = new Dictionary<string, List<TextEdit>>();
     }
 }

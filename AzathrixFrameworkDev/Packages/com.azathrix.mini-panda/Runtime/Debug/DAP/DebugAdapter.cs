@@ -438,15 +438,31 @@ namespace Azathrix.MiniPanda.Debug.DAP
         private void HandleEvaluate(Request request)
         {
             var expression = GetArg<string>(request, "expression");
+            var context = GetArg<string>(request, "context"); // "hover", "watch", "repl"
 
             try
             {
-                var result = _vm.Eval(expression);
-                var resultStr = result.AsString();
+                Value result;
+
+                // hover 时优先在当前作用域查找
+                if (context == "hover" && !expression.Contains("("))
+                {
+                    result = EvaluateInCurrentScope(expression);
+                    if (!result.IsNull)
+                        goto sendResult;
+                }
+
+                // 回退到 Eval
+                result = _vm.Eval(expression);
+
+                sendResult:
+                var resultStr = FormatValue(result);
                 var typeStr = GetValueTypeName(result);
 
                 var varRef = 0;
-                if (result.IsArray || result.IsDict || result.IsInstance)
+                if (result.IsArray || result.IsDict || result.IsInstance ||
+                    result.As<MiniPandaModule>() != null ||
+                    result.As<MiniPandaGlobalTable>() != null)
                 {
                     varRef = _nextVarRef++;
                     _varRefs[varRef] = result;
@@ -587,28 +603,80 @@ namespace Azathrix.MiniPanda.Debug.DAP
         {
             var variables = new List<Variable>();
 
-            if (scopeType == "global")
+            if (scopeType == "local")
             {
+                // 1. 栈上的局部变量
+                var locals = _vm.GetLocalVariables(frameId);
+                foreach (var kv in locals)
+                {
+                    variables.Add(CreateVariable(kv.Key, kv.Value));
+                }
+
+                // 2. 当前帧的闭包环境变量（脚本级变量）
+                var env = _vm.GetFrameEnvironment(frameId);
+                if (env != null)
+                {
+                    foreach (var kv in env.GetAll())
+                    {
+                        // 跳过已经在局部变量中的
+                        if (locals.ContainsKey(kv.Key)) continue;
+                        // 跳过内置函数
+                        if (kv.Value.As<NativeFunction>() != null) continue;
+                        variables.Add(CreateVariable(kv.Key, kv.Value));
+                    }
+                }
+            }
+            else if (scopeType == "global")
+            {
+                // 只显示真正的全局变量（不包括内置函数）
                 foreach (var kv in _vm.GlobalScope.GetAll())
                 {
-                    var varRef = 0;
-                    if (kv.Value.IsArray || kv.Value.IsDict || kv.Value.IsInstance)
-                    {
-                        varRef = _nextVarRef++;
-                        _varRefs[varRef] = kv.Value;
-                    }
-
-                    variables.Add(new Variable
-                    {
-                        name = kv.Key,
-                        value = kv.Value.AsString(),
-                        type = GetValueTypeName(kv.Value),
-                        variablesReference = varRef
-                    });
+                    // 跳过内置函数，它们太多了
+                    if (kv.Value.As<NativeFunction>() != null) continue;
+                    variables.Add(CreateVariable(kv.Key, kv.Value));
                 }
             }
 
             return variables;
+        }
+
+        private Variable CreateVariable(string name, Value value)
+        {
+            var varRef = 0;
+            // 可展开的类型
+            if (value.IsArray || value.IsDict || value.IsInstance ||
+                value.As<MiniPandaGlobalTable>() != null ||
+                value.As<MiniPandaModule>() != null)
+            {
+                varRef = _nextVarRef++;
+                _varRefs[varRef] = value;
+            }
+
+            return new Variable
+            {
+                name = name,
+                value = FormatValue(value),
+                type = GetValueTypeName(value),
+                variablesReference = varRef
+            };
+        }
+
+        private string FormatValue(Value value)
+        {
+            // 对函数类型显示更友好的格式
+            if (value.As<MiniPandaFunction>() is { } func)
+                return $"function {func.Prototype?.Name ?? "<anonymous>"}()";
+            if (value.As<MiniPandaBoundMethod>() is { } method)
+                return $"method {method.Method?.Prototype?.Name ?? "<bound>"}()";
+            if (value.As<NativeFunction>() != null)
+                return "<native function>";
+            if (value.As<MiniPandaClass>() is { } cls)
+                return $"class {cls.Name}";
+            if (value.As<MiniPandaGlobalTable>() != null)
+                return "<global table>";
+            if (value.As<MiniPandaModule>() is { } module)
+                return $"module {System.IO.Path.GetFileNameWithoutExtension(module.Path)}";
+            return value.AsString();
         }
 
         private List<Variable> GetValueChildren(Value value)
@@ -660,20 +728,28 @@ namespace Azathrix.MiniPanda.Debug.DAP
             {
                 foreach (var kv in inst.Fields)
                 {
-                    var varRef = 0;
-                    if (kv.Value.IsArray || kv.Value.IsDict || kv.Value.IsInstance)
-                    {
-                        varRef = _nextVarRef++;
-                        _varRefs[varRef] = kv.Value;
-                    }
-
-                    variables.Add(new Variable
-                    {
-                        name = kv.Key,
-                        value = kv.Value.AsString(),
-                        type = GetValueTypeName(kv.Value),
-                        variablesReference = varRef
-                    });
+                    variables.Add(CreateVariable(kv.Key, kv.Value));
+                }
+            }
+            else if (value.As<MiniPandaGlobalTable>() is { } globalTable)
+            {
+                // 显示 _G 的内容（全局变量）
+                foreach (var kv in _vm.GlobalScope.GetAll())
+                {
+                    // 跳过内置函数
+                    if (kv.Value.As<NativeFunction>() != null) continue;
+                    variables.Add(CreateVariable(kv.Key, kv.Value));
+                }
+            }
+            else if (value.As<MiniPandaModule>() is { } module)
+            {
+                // 显示模块导出的成员
+                foreach (var kv in module.Env.GetAll())
+                {
+                    // 如果有导出列表，只显示导出的
+                    if (module.Exports != null && module.Exports.Count > 0 && !module.Exports.Contains(kv.Key))
+                        continue;
+                    variables.Add(CreateVariable(kv.Key, kv.Value));
                 }
             }
 
@@ -682,6 +758,9 @@ namespace Azathrix.MiniPanda.Debug.DAP
 
         private string GetValueTypeName(Value value)
         {
+            if (value.As<MiniPandaGlobalTable>() != null) return "global";
+            if (value.As<MiniPandaModule>() != null) return "module";
+
             return value.Type switch
             {
                 Core.ValueType.Null => "null",
@@ -695,6 +774,70 @@ namespace Azathrix.MiniPanda.Debug.DAP
                 Core.ValueType.Object when value.IsInstance => "instance",
                 _ => "unknown"
             };
+        }
+
+        /// <summary>
+        /// 在当前作用域中求值表达式（支持成员访问如 config.debug）
+        /// </summary>
+        private Value EvaluateInCurrentScope(string expression)
+        {
+            var parts = expression.Split('.');
+            var rootName = parts[0];
+
+            // 查找根变量
+            Value value = Value.Null;
+            var frames = _vm.GetStackTrace();
+
+            if (frames.Length > 0)
+            {
+                // 1. 局部变量
+                var locals = _vm.GetLocalVariables(frames[0].Id);
+                if (locals.TryGetValue(rootName, out var localValue))
+                {
+                    value = localValue;
+                }
+                else
+                {
+                    // 2. 闭包环境
+                    var env = _vm.GetFrameEnvironment(frames[0].Id);
+                    if (env != null)
+                    {
+                        value = env.Get(rootName);
+                    }
+                }
+            }
+
+            // 3. 全局变量
+            if (value.IsNull)
+            {
+                value = _vm.GlobalScope.Get(rootName);
+            }
+
+            if (value.IsNull) return Value.Null;
+
+            // 处理成员访问链 (config.debug.xxx 或 module.func)
+            for (int i = 1; i < parts.Length && !value.IsNull; i++)
+            {
+                var member = parts[i];
+                if (value.As<MiniPandaObject>() is { } obj)
+                {
+                    value = obj.Fields.TryGetValue(member, out var v) ? v : Value.Null;
+                }
+                else if (value.As<MiniPandaInstance>() is { } inst)
+                {
+                    value = inst.Fields.TryGetValue(member, out var v) ? v : Value.Null;
+                }
+                else if (value.As<MiniPandaModule>() is { } module)
+                {
+                    value = module.GetMember(member);
+                }
+                else
+                {
+                    return Value.Null;
+                }
+            }
+
+            return value;
         }
 
         private int GetCurrentFrameDepth()

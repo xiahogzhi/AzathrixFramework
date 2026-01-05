@@ -871,7 +871,31 @@ namespace Azathrix.MiniPanda.Parser
                 var token = Previous();
                 if (token.Literal is List<object> parts)
                 {
-                    return new StringExpr { Parts = parts, Line = token.Line };
+                    // 预解析插值表达式，避免编译时重复解析
+                    var parsedParts = new List<object>(parts.Count);
+                    foreach (var part in parts)
+                    {
+                        if (part is StringInterpolation interp)
+                        {
+                            var lexer = new Lexer.Lexer(interp.Expression);
+                            var tokens = lexer.Tokenize();
+                            var parser = new Parser(tokens);
+                            var stmts = parser.Parse();
+                            if (stmts.Count == 1 && stmts[0] is ExpressionStmt exprStmt)
+                            {
+                                parsedParts.Add(exprStmt.Expression);
+                            }
+                            else
+                            {
+                                throw Error("String interpolation must contain a single expression");
+                            }
+                        }
+                        else
+                        {
+                            parsedParts.Add(part);
+                        }
+                    }
+                    return new StringExpr { Parts = parsedParts, Line = token.Line };
                 }
                 return new LiteralExpr { Value = token.Literal, Line = token.Line };
             }
@@ -972,6 +996,7 @@ namespace Azathrix.MiniPanda.Parser
                         else if (t == TokenType.Comma && parenDepth == 0) break;
                         idx++;
                     }
+                    if (idx >= _tokens.Count) return false;
                 }
 
                 if (_tokens[idx].Type == TokenType.Comma)
@@ -1160,7 +1185,7 @@ namespace Azathrix.MiniPanda.Parser
         private Exception Error(string message)
         {
             var token = Peek();
-            return new ParserException($"{message} at line {token.Line}, column {token.Column}");
+            return new ParserException(message, token.Line, token.Column);
         }
 
         #endregion
@@ -1171,6 +1196,14 @@ namespace Azathrix.MiniPanda.Parser
     /// </summary>
     public class ParserException : Exception
     {
-        public ParserException(string message) : base(message) { }
+        public int Line { get; }
+        public int Column { get; }
+
+        public ParserException(string message, int line = 1, int column = 1)
+            : base($"{message} at line {line}, column {column}")
+        {
+            Line = line;
+            Column = column;
+        }
     }
 }

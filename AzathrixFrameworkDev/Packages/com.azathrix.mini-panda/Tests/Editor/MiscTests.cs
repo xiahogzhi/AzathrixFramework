@@ -121,7 +121,7 @@ namespace Azathrix.MiniPanda.Tests
         [Test]
         public void Value_FromString()
         {
-            var v = Value.FromObject(new MiniPandaString("hello"));
+            var v = Value.FromObject(MiniPandaString.Create("hello"));
             Assert.IsTrue(v.IsString);
             Assert.AreEqual("hello", v.AsString());
         }

@@ -2,10 +2,11 @@ using System.Collections.Generic;
 
 namespace Azathrix.MiniPanda.Core
 {
-    public class Environment
+    public class Environment : IEnvironmentProvider
     {
         private readonly Dictionary<string, Value> _values = new Dictionary<string, Value>();
         private readonly Environment _parent;
+        private readonly IEnvironmentProvider _provider;
 
         public Environment() { }
 
@@ -14,11 +15,27 @@ namespace Azathrix.MiniPanda.Core
             _parent = parent;
         }
 
+        public Environment(IEnvironmentProvider provider)
+        {
+            _provider = provider;
+        }
+
+        public Environment(Environment parent, IEnvironmentProvider provider)
+        {
+            _parent = parent;
+            _provider = provider;
+        }
+
         public Environment CreateChild() => new Environment(this);
 
         public void Define(string name, Value value)
         {
             _values[name] = value;
+        }
+
+        public void Define(string name, object value)
+        {
+            _values[name] = ConvertToValue(value);
         }
 
         public void Set(string name, Value value)
@@ -37,10 +54,17 @@ namespace Azathrix.MiniPanda.Core
             _values[name] = value;
         }
 
+        public void Set(string name, object value)
+        {
+            Set(name, ConvertToValue(value));
+        }
+
         public Value Get(string name)
         {
             if (_values.TryGetValue(name, out var value))
                 return value;
+            if (_provider != null && _provider.Contains(name))
+                return _provider.Get(name);
             if (_parent != null)
                 return _parent.Get(name);
             return Value.Null;
@@ -49,6 +73,7 @@ namespace Azathrix.MiniPanda.Core
         public bool Contains(string name)
         {
             if (_values.ContainsKey(name)) return true;
+            if (_provider != null && _provider.Contains(name)) return true;
             return _parent?.Contains(name) ?? false;
         }
 
@@ -59,6 +84,11 @@ namespace Azathrix.MiniPanda.Core
         public void SetLocal(string name, Value value)
         {
             _values[name] = value;
+        }
+
+        public void SetLocal(string name, object value)
+        {
+            _values[name] = ConvertToValue(value);
         }
 
         public Value GetLocal(string name)
@@ -76,19 +106,6 @@ namespace Azathrix.MiniPanda.Core
             foreach (var (name, value) in vars)
             {
                 Define(name, value);
-            }
-            return this;
-        }
-
-        public Environment With(object anonymousObject)
-        {
-            if (anonymousObject == null) return this;
-
-            var type = anonymousObject.GetType();
-            foreach (var prop in type.GetProperties())
-            {
-                var value = prop.GetValue(anonymousObject);
-                Define(prop.Name, ConvertToValue(value));
             }
             return this;
         }
@@ -116,7 +133,7 @@ namespace Azathrix.MiniPanda.Core
                 double d => Value.FromNumber(d),
                 string s => s,
                 Value v => v,
-                _ => Value.FromObject(new MiniPandaString(obj.ToString()))
+                _ => Value.FromObject(MiniPandaString.Create(obj.ToString()))
             };
         }
     }
